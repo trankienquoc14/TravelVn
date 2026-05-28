@@ -16,11 +16,11 @@ uses: actions/checkout@v4
 - name: Sync files via FTP
 uses: SamKirkland/FTP-Deploy-Action@v4.3.5
 with:
-server: ${{ secrets.ftpupload.net}}
-username: ${{ secrets.if0_41728842}}
-password: ${{ secrets.ddEXbUD0grfbxWx}}
-local-dir: ./
-server-dir: /public_html/ # Đây là thư mục gốc web trên cPanel, hãy đổi nếu host của bạn dùng đường dẫn khác
+    server: ${{ secrets.FTP_SERVER }}
+    username: ${{ secrets.FTP_USERNAME }}
+    password: ${{ secrets.FTP_PASSWORD }}
+    local-dir: ./
+    server-dir: /htdocs/ # Đây là thư mục gốc web trên cPanel, hãy đổi nếu host của bạn dùng đường dẫn khác
 exclude: |
 **/.git*
 **/.git*/**
