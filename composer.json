@@ -1,0 +1,8 @@
+{
+    "require": {
+        "ratchet/pawl": "^0.4.3",
+        "hashids/hashids": "^5.0",
+        "pusher/pusher-php-server": "^7.2",
+        "cloudinary/cloudinary_php": "^3.1"
+    }
+}
