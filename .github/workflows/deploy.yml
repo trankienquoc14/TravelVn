@@ -25,4 +25,4 @@ exclude: |
 **/.git*
 **/.git*/**
 README.md
-.env # Loại trừ file môi trường để không ghi đè cấu hình database thực tế trên host
+.env # Loại trừ file môi trường để không ghi đè cấu hình database thực tế trên 
