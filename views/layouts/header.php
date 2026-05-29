@@ -258,4 +258,15 @@ if (session_status() === PHP_SESSION_NONE) {
         </div>
     </nav>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Hàm bật/tắt khung chat
+        function toggleChat() {
+            const chatBox = document.getElementById('customerChatBox');
+            if (chatBox.style.display === 'none' || chatBox.style.display === '') {
+                chatBox.style.display = 'flex';
+            } else {
+                chatBox.style.display = 'none';
+            }
+        }
+    </script>
     <div class="main-content">
