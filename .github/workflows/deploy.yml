@@ -19,8 +19,10 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./
-        server-dir: /htdocs/ 
+        # Upload the public webroot contents so index.php is at the document root
+        local-dir: public
+        # Most cPanel hosts use /public_html as document root; adjust if your host uses /htdocs
+        server-dir: /public_html/
         exclude: |
           **/.git*
           **/.git*/**
