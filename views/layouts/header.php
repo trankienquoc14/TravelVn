@@ -15,39 +15,38 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
-        /* Tùy chỉnh Navbar mang phong cách Traveloka */
+        /* Tùy chỉnh Navbar mang phong cách Traveloka (Giữ nguyên kích thước cũ) */
         .navbar-custom {
             background-color: #66CCFF;
-            padding: 8px 0;
-            /* Thu nhỏ padding lại để nhường chỗ cho logo to ra */
+            padding: 12px 0;
+            /* Chiều cao header được giữ nguyên như cũ */
             border-bottom: 1px solid #f0f0f0;
         }
 
         .navbar-brand {
-            padding: 0 !important;
-            /* Xóa khoảng đệm mặc định */
+            color: #0194f3 !important;
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
             display: inline-flex;
             align-items: center;
+            gap: 0.75rem;
+            padding: 0 !important;
+            /* Xóa khoảng đệm để logo sát viền */
         }
 
-        /* ------------------------------------- */
-        /* CSS CHUẨN CHO LOGO - XÓA PHÔNG TRẮNG */
-        /* ------------------------------------- */
+        /* THỦ THUẬT: LOGO TO NHƯNG KHÔNG LÀM PHÌNH HEADER */
         .navbar-logo {
             height: 65px;
-            /* Tăng lên 65px để logo nổi bật và cân đối */
+            /* Giữ logo to rõ */
             width: auto;
             object-fit: contain;
             background-color: transparent;
-            /* Xóa phông nền trắng */
-            border-radius: 0;
-            /* Xóa viền bo tròn */
-            border: none;
-            padding: 0;
-            box-shadow: none;
-            /* Xóa đổ bóng khung cũ */
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
-            /* Đổ bóng sát viền chữ giúp logo nổi bật trên nền xanh */
+            margin-top: -15px;
+            /* Kéo logo lẹm lên trên */
+            margin-bottom: -15px;
+            /* Kéo logo lẹm xuống dưới */
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
             transition: transform 0.3s ease;
         }
 
@@ -57,22 +56,19 @@ if (session_status() === PHP_SESSION_NONE) {
 
         .nav-link-custom {
             color: #434343 !important;
-            font-weight: 600;
-            /* Tăng độ đậm của chữ menu lên một chút */
+            font-weight: 500;
             padding: 8px 16px !important;
             transition: color 0.3s;
         }
 
         .nav-link-custom:hover {
-            color: #01509a !important;
-            /* Đổi màu xanh đậm hơn khi hover cho hợp nền */
+            color: #0194f3 !important;
         }
 
         /* Nút Đăng nhập */
         .btn-login {
             color: #0194f3;
             border: 1px solid #0194f3;
-            background-color: rgba(255, 255, 255, 0.8);
             font-weight: 600;
             border-radius: 8px;
             padding: 8px 20px;
@@ -82,7 +78,7 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         .btn-login:hover {
-            background-color: #ffffff;
+            background-color: #f0f8ff;
             color: #007bc2;
         }
 
@@ -113,13 +109,22 @@ if (session_status() === PHP_SESSION_NONE) {
             border: 1px solid #e0e0e0;
         }
 
+        /* Ép Navbar luôn nổi bần bật trên tất cả các trang (Kể cả Mobile và PC) */
         nav.navbar-custom {
             position: relative;
             z-index: 1050 !important;
         }
 
+        /* Fix lỗi Dropdown bị chìm ra phía sau các khối div bên dưới */
         .dropdown-menu {
             z-index: 1060 !important;
+        }
+
+        /* Ẩn chữ TravelVN trên màn hình điện thoại nhỏ */
+        @media (max-width: 575.98px) {
+            .brand-text {
+                font-size: 1.25rem;
+            }
         }
 
         /* Fix lỗi màn hình Mobile không bấm được các link bên trong Menu xổ xuống */
@@ -137,7 +142,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
             .navbar-logo {
                 height: 50px;
-                /* Thu nhỏ logo lại một xíu trên điện thoại */
+                /* Thu nhỏ logo lại một chút trên mobile */
+                margin-top: -10px;
+                margin-bottom: -10px;
             }
         }
     </style>
@@ -204,8 +211,7 @@ if (session_status() === PHP_SESSION_NONE) {
                         <?php elseif ($_SESSION['user']['role'] == 'guide'): ?>
                             <li class="nav-item">
                                 <a class="nav-link nav-link-custom fw-semibold text-success" href="guide.php?action=schedule">
-                                    <i class="bi bi-briefcase-fill me-1"></i> Công
-                                    việc
+                                    <i class="bi bi-briefcase-fill me-1"></i> Công việc
                                 </a>
                             </li>
                         <?php endif; ?>
