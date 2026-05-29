@@ -101,14 +101,17 @@ if (session_status() === PHP_SESSION_NONE) {
 
         /* CSS cho Logo hình ảnh */
         .navbar-logo {
-            height: 42px;
+            height: 55px;
+            /* Tăng chiều cao để logo lớn và rõ nét hơn */
             width: auto;
             object-fit: contain;
-            border-radius: 999px;
-            background-color: #ffffff;
-            padding: 5px;
-            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(1, 148, 243, 0.15);
+            transition: transform 0.3s ease;
+            /* Thêm hiệu ứng chuyển động mượt mà */
+        }
+
+        /* Hiệu ứng phóng to nhẹ khi người dùng di chuột vào logo */
+        .navbar-logo:hover {
+            transform: scale(1.05);
         }
 
         .brand-text {
