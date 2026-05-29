@@ -18,35 +18,61 @@ if (session_status() === PHP_SESSION_NONE) {
         /* Tùy chỉnh Navbar mang phong cách Traveloka */
         .navbar-custom {
             background-color: #66CCFF;
-            padding: 12px 0;
+            padding: 8px 0;
+            /* Thu nhỏ padding lại để nhường chỗ cho logo to ra */
             border-bottom: 1px solid #f0f0f0;
         }
 
         .navbar-brand {
-            color: #0194f3 !important;
-            font-weight: 700;
-            font-size: 1.5rem;
-            letter-spacing: -0.5px;
+            padding: 0 !important;
+            /* Xóa khoảng đệm mặc định */
             display: inline-flex;
             align-items: center;
-            gap: 0.75rem;
+        }
+
+        /* ------------------------------------- */
+        /* CSS CHUẨN CHO LOGO - XÓA PHÔNG TRẮNG */
+        /* ------------------------------------- */
+        .navbar-logo {
+            height: 65px;
+            /* Tăng lên 65px để logo nổi bật và cân đối */
+            width: auto;
+            object-fit: contain;
+            background-color: transparent;
+            /* Xóa phông nền trắng */
+            border-radius: 0;
+            /* Xóa viền bo tròn */
+            border: none;
+            padding: 0;
+            box-shadow: none;
+            /* Xóa đổ bóng khung cũ */
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+            /* Đổ bóng sát viền chữ giúp logo nổi bật trên nền xanh */
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-logo:hover {
+            transform: scale(1.05);
         }
 
         .nav-link-custom {
             color: #434343 !important;
-            font-weight: 500;
+            font-weight: 600;
+            /* Tăng độ đậm của chữ menu lên một chút */
             padding: 8px 16px !important;
             transition: color 0.3s;
         }
 
         .nav-link-custom:hover {
-            color: #0194f3 !important;
+            color: #01509a !important;
+            /* Đổi màu xanh đậm hơn khi hover cho hợp nền */
         }
 
         /* Nút Đăng nhập */
         .btn-login {
             color: #0194f3;
             border: 1px solid #0194f3;
+            background-color: rgba(255, 255, 255, 0.8);
             font-weight: 600;
             border-radius: 8px;
             padding: 8px 20px;
@@ -56,7 +82,7 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         .btn-login:hover {
-            background-color: #f0f8ff;
+            background-color: #ffffff;
             color: #007bc2;
         }
 
@@ -87,47 +113,13 @@ if (session_status() === PHP_SESSION_NONE) {
             border: 1px solid #e0e0e0;
         }
 
-        /* Ép Navbar luôn nổi bần bật trên tất cả các trang (Kể cả Mobile và PC) */
         nav.navbar-custom {
             position: relative;
             z-index: 1050 !important;
-            /* Mức z-index chuẩn của Bootstrap cho header */
         }
 
-        /* Fix lỗi Dropdown bị chìm ra phía sau các khối div bên dưới */
         .dropdown-menu {
             z-index: 1060 !important;
-        }
-
-        /* CSS cho Logo hình ảnh */
-        .navbar-logo {
-            height: 55px;
-            /* Tăng chiều cao để logo lớn và rõ nét hơn */
-            width: auto;
-            object-fit: contain;
-            transition: transform 0.3s ease;
-            /* Thêm hiệu ứng chuyển động mượt mà */
-        }
-
-        /* Hiệu ứng phóng to nhẹ khi người dùng di chuột vào logo */
-        .navbar-logo:hover {
-            transform: scale(1.05);
-        }
-
-        .brand-text {
-            font-size: 1.35rem;
-            color: #045baf;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin: 0;
-        }
-
-        /* Ẩn chữ TravelVN trên màn hình điện thoại nhỏ nếu logo đã có sẵn chữ (Tùy chọn) */
-        @media (max-width: 575.98px) {
-            .brand-text {
-                font-size: 1.25rem;
-            }
         }
 
         /* Fix lỗi màn hình Mobile không bấm được các link bên trong Menu xổ xuống */
@@ -135,13 +127,17 @@ if (session_status() === PHP_SESSION_NONE) {
             .navbar-collapse {
                 position: absolute;
                 top: 100%;
-                /* Đẩy menu xuống dưới thanh navbar */
                 left: 0;
                 right: 0;
                 background-color: white;
                 padding: 1rem;
                 box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
                 z-index: 1055 !important;
+            }
+
+            .navbar-logo {
+                height: 50px;
+                /* Thu nhỏ logo lại một xíu trên điện thoại */
             }
         }
     </style>
@@ -170,15 +166,15 @@ if (session_status() === PHP_SESSION_NONE) {
                     </li>
                     <li class="nav-item">
                         <a class="nav-link nav-link-custom" href="index.php?action=blogs">
-                            <i class="bi bi-map me-1"></i> Bài viết
+                            <i class="bi bi-journal-text me-1"></i> Bài viết
                         </a>
                     </li>
                     <li class="nav-item me-3">
                         <?php
                         $role = $_SESSION['user']['role'] ?? 'customer';
-                        $supportLink = 'javascript:void(0);'; // Mặc định không chuyển trang
-                        $onClick = 'toggleChat()'; // Mặc định là bật bong bóng chat
-                        
+                        $supportLink = 'javascript:void(0);';
+                        $onClick = 'toggleChat()';
+
                         if ($role == 'admin') {
                             $supportLink = 'admin.php?action=chat';
                             $onClick = '';
