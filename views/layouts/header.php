@@ -27,6 +27,9 @@ if (session_status() === PHP_SESSION_NONE) {
             font-weight: 700;
             font-size: 1.5rem;
             letter-spacing: -0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .nav-link-custom {
@@ -98,10 +101,23 @@ if (session_status() === PHP_SESSION_NONE) {
 
         /* CSS cho Logo hình ảnh */
         .navbar-logo {
-            max-height: 40px;
-            /* Giới hạn chiều cao logo để vừa vặn với thanh navbar */
+            height: 42px;
             width: auto;
             object-fit: contain;
+            border-radius: 999px;
+            background-color: #ffffff;
+            padding: 5px;
+            box-shadow: 0 2px 14px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(1, 148, 243, 0.15);
+        }
+
+        .brand-text {
+            font-size: 1.35rem;
+            color: #045baf;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0;
         }
 
         /* Ẩn chữ TravelVN trên màn hình điện thoại nhỏ nếu logo đã có sẵn chữ (Tùy chọn) */
@@ -133,9 +149,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <nav class="navbar navbar-expand-lg navbar-light navbar-custom sticky-top shadow-sm">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="index.php">
-                <img src="logo.png" alt="TravelVN Logo" class="navbar-logo me-2">
-
-                <span class="brand-text">TravelVN</span>
+                <img src="uploads/logo.png" alt="TravelVN Logo" class="navbar-logo me-2">
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
