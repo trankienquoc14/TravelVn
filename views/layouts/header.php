@@ -15,37 +15,34 @@ if (session_status() === PHP_SESSION_NONE) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
-        /* Tùy chỉnh Navbar mang phong cách Traveloka (Giữ nguyên kích thước cũ) */
+        /* Tùy chỉnh Navbar mang phong cách Traveloka */
         .navbar-custom {
             background-color: #66CCFF;
             padding: 12px 0;
-            /* Chiều cao header được giữ nguyên như cũ */
+            /* Giữ nguyên chiều cao chuẩn của header */
             border-bottom: 1px solid #f0f0f0;
         }
 
         .navbar-brand {
-            color: #0194f3 !important;
-            font-weight: 700;
-            font-size: 1.5rem;
-            letter-spacing: -0.5px;
+            padding: 0 !important;
+            margin: 0;
             display: inline-flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0 !important;
-            /* Xóa khoảng đệm để logo sát viền */
         }
 
-        /* THỦ THUẬT: LOGO TO NHƯNG KHÔNG LÀM PHÌNH HEADER */
+        /* KHẮC PHỤC TRIỆT ĐỂ: Ép logo to lên và phá giới hạn của Bootstrap */
         .navbar-logo {
-            height: 65px;
-            /* Giữ logo to rõ */
+            height: 100px;
+            /* Tăng mạnh chiều cao lên 100px */
+            max-height: none !important;
+            /* Vô hiệu hóa giới hạn ngầm của Bootstrap */
             width: auto;
             object-fit: contain;
             background-color: transparent;
-            margin-top: -15px;
-            /* Kéo logo lẹm lên trên */
-            margin-bottom: -15px;
-            /* Kéo logo lẹm xuống dưới */
+            margin-top: -30px;
+            /* Kéo tràn lên trên để không làm phình header */
+            margin-bottom: -30px;
+            /* Kéo tràn xuống dưới để không làm phình header */
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
             transition: transform 0.3s ease;
         }
@@ -109,25 +106,16 @@ if (session_status() === PHP_SESSION_NONE) {
             border: 1px solid #e0e0e0;
         }
 
-        /* Ép Navbar luôn nổi bần bật trên tất cả các trang (Kể cả Mobile và PC) */
+        /* Ép Navbar luôn nổi bần bật trên tất cả các trang */
         nav.navbar-custom {
             position: relative;
             z-index: 1050 !important;
         }
 
-        /* Fix lỗi Dropdown bị chìm ra phía sau các khối div bên dưới */
         .dropdown-menu {
             z-index: 1060 !important;
         }
 
-        /* Ẩn chữ TravelVN trên màn hình điện thoại nhỏ */
-        @media (max-width: 575.98px) {
-            .brand-text {
-                font-size: 1.25rem;
-            }
-        }
-
-        /* Fix lỗi màn hình Mobile không bấm được các link bên trong Menu xổ xuống */
         @media (max-width: 991.98px) {
             .navbar-collapse {
                 position: absolute;
@@ -141,10 +129,10 @@ if (session_status() === PHP_SESSION_NONE) {
             }
 
             .navbar-logo {
-                height: 50px;
-                /* Thu nhỏ logo lại một chút trên mobile */
-                margin-top: -10px;
-                margin-bottom: -10px;
+                height: 70px;
+                /* Thu nhỏ gọn lại trên mobile */
+                margin-top: -15px;
+                margin-bottom: -15px;
             }
         }
     </style>
