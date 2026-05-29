@@ -173,7 +173,7 @@
                     if (previewText.includes('google.com/maps')) previewText = "📍 Đã gửi vị trí";
 
                     list.innerHTML += `
-                        <div class="session-item d-flex gap-3 align-items-center ${isActive}" onclick="openChat(event, '${s.session_id}', '${senderName}')" id="session-box-${s.session_id}">
+                        <div class="session-item d-flex gap-3 align-items-center ${isActive}" onclick="openChat('${s.session_id}', '${senderName}')" id="session-box-${s.session_id}">
                             <div class="rounded-circle bg-light text-primary d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 40px; height: 40px;">${avatarLetter}</div>
                             <div class="flex-grow-1 overflow-hidden">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -195,7 +195,7 @@
     }
 
     // 2. MỞ KHUNG CHAT
-    function openChat(e, sessionId, senderName) {
+    function openChat(sessionId, senderName) {
         currentSessionId = sessionId;
         document.getElementById('adminChatForm').classList.remove('d-none');
         clearAdminFilePreview();
@@ -241,9 +241,7 @@
             });
         
         document.querySelectorAll('.session-item').forEach(el => el.classList.remove('active'));
-        if (e && e.currentTarget) {
-            e.currentTarget.classList.add('active');
-        }
+        event.currentTarget.classList.add('active');
     }
 
     // 3. VẼ TIN NHẮN THEO ĐỊNH DẠNG
