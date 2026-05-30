@@ -19,7 +19,6 @@ if (session_status() === PHP_SESSION_NONE) {
         .navbar-custom {
             background-color: #66CCFF;
             padding: 12px 0;
-            /* Giữ nguyên chiều cao chuẩn của header */
             border-bottom: 1px solid #f0f0f0;
         }
 
@@ -30,19 +29,14 @@ if (session_status() === PHP_SESSION_NONE) {
             align-items: center;
         }
 
-        /* KHẮC PHỤC TRIỆT ĐỂ: Ép logo to lên và phá giới hạn của Bootstrap */
         .navbar-logo {
             height: 100px;
-            /* Tăng mạnh chiều cao lên 100px */
             max-height: none !important;
-            /* Vô hiệu hóa giới hạn ngầm của Bootstrap */
             width: auto;
             object-fit: contain;
             background-color: transparent;
             margin-top: -30px;
-            /* Kéo tràn lên trên để không làm phình header */
             margin-bottom: -30px;
-            /* Kéo tràn xuống dưới để không làm phình header */
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
             transition: transform 0.3s ease;
         }
@@ -106,7 +100,6 @@ if (session_status() === PHP_SESSION_NONE) {
             border: 1px solid #e0e0e0;
         }
 
-        /* Ép Navbar luôn nổi bần bật trên tất cả các trang */
         nav.navbar-custom {
             position: relative;
             z-index: 1050 !important;
@@ -130,7 +123,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
             .navbar-logo {
                 height: 70px;
-                /* Thu nhỏ gọn lại trên mobile */
                 margin-top: -15px;
                 margin-bottom: -15px;
             }
@@ -164,6 +156,18 @@ if (session_status() === PHP_SESSION_NONE) {
                             <i class="bi bi-journal-text me-1"></i> Bài viết
                         </a>
                     </li>
+
+                    <li class="nav-item position-relative mx-2 d-flex align-items-center">
+                        <a class="nav-link nav-link-custom" href="#" title="Thông báo hệ thống">
+                            <i class="bi bi-bell-fill fs-5"></i>
+                            <span id="global-notif-badge"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                style="font-size: 0.65rem; border: 2px solid white;">
+                                0
+                            </span>
+                        </a>
+                    </li>
+
                     <li class="nav-item me-3">
                         <?php
                         $role = $_SESSION['user']['role'] ?? 'customer';
@@ -259,13 +263,14 @@ if (session_status() === PHP_SESSION_NONE) {
     </nav>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Hàm bật/tắt khung chat
         function toggleChat() {
             const chatBox = document.getElementById('customerChatBox');
-            if (chatBox.style.display === 'none' || chatBox.style.display === '') {
-                chatBox.style.display = 'flex';
-            } else {
-                chatBox.style.display = 'none';
+            if (chatBox) {
+                if (chatBox.style.display === 'none' || chatBox.style.display === '') {
+                    chatBox.style.display = 'flex';
+                } else {
+                    chatBox.style.display = 'none';
+                }
             }
         }
     </script>

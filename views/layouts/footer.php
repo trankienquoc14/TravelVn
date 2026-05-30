@@ -67,7 +67,6 @@
         margin-top: 2px;
     }
 
-    /* Social Icons */
     .social-links {
         display: flex;
         gap: 12px;
@@ -95,7 +94,6 @@
         box-shadow: 0 4px 10px rgba(1, 148, 243, 0.3);
     }
 
-    /* Footer Bottom */
     .footer-bottom {
         background-color: #e2f8ff;
         padding: 20px 0;
@@ -120,7 +118,6 @@
     }
 
     /* ================= CSS KHUNG CHAT CHUYÊN NGHIỆP ================= */
-    /* Dùng cách ly CSS bằng cách chỉ định rõ thuộc tính cố định để không phá layout trang gốc */
     .chat-widget {
         position: fixed;
         bottom: 25px;
@@ -213,20 +210,17 @@
         margin: 0;
     }
 
-    /* Thay thế class .chat-input-wrapper */
     .chat-input-wrapper {
         display: flex;
         align-items: center;
         gap: 6px;
         background: #f1f5f9;
         padding: 4px 6px;
-        /* Chỉnh lại padding để nhường chỗ cho nút */
         border-radius: 24px;
         border: 1px solid transparent;
         transition: all 0.2s;
         width: 100%;
         box-sizing: border-box;
-        /* Đảm bảo padding không làm tràn khung */
     }
 
     .chat-input-wrapper:focus-within {
@@ -235,11 +229,9 @@
         box-shadow: 0 0 0 3px rgba(1, 148, 243, 0.15);
     }
 
-    /* Thay thế class .chat-input */
     .chat-input {
         flex: 1;
         min-width: 0;
-        /* QUAN TRỌNG: Ép ô input tự thu nhỏ lại để không đẩy nút gửi ra ngoài */
         border: none;
         background: transparent;
         padding: 8px 4px;
@@ -248,10 +240,8 @@
         color: #1e293b;
     }
 
-    /* Thay thế class .chat-footer button */
     .chat-footer button {
         flex-shrink: 0;
-        /* QUAN TRỌNG: Không cho phép các nút bấm bị bóp méo hoặc ép nhỏ */
         width: 36px;
         height: 36px;
         border: none;
@@ -270,14 +260,12 @@
         color: #0194f3;
     }
 
-    /* Thay thế class .chat-footer .chat-submit */
     .chat-footer .chat-submit {
         background: #0194f3;
         color: white;
         width: 38px;
         height: 38px;
         margin-left: 2px;
-        /* Tạo khoảng cách nhẹ với ô input */
     }
 
     .msg-bubble {
@@ -418,7 +406,6 @@
                         <a href="#" class="social-icon" title="TikTok"><i class="bi bi-tiktok"></i></a>
                     </div>
                 </div>
-
                 <div class="col-lg-2 col-md-6">
                     <h5 class="footer-title">Về TravelVN</h5>
                     <ul class="footer-links">
@@ -428,7 +415,6 @@
                         <li><a href="index.php?action=affiliate">Chương trình đại lý</a></li>
                     </ul>
                 </div>
-
                 <div class="col-lg-3 col-md-6">
                     <h5 class="footer-title">Hỗ trợ khách hàng</h5>
                     <ul class="footer-links">
@@ -438,7 +424,6 @@
                         <li><a href="index.php?action=policy">Quy chế hoạt động</a></li>
                     </ul>
                 </div>
-
                 <div class="col-lg-3 col-md-6">
                     <h5 class="footer-title">Thông tin liên hệ</h5>
                     <ul class="footer-contact">
@@ -463,7 +448,6 @@
             </div>
         </div>
     </div>
-
     <div class="footer-bottom">
         <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
             <p class="mb-3 mb-md-0 fw-medium">© 2026 TravelVN. Đã đăng ký bản quyền.</p>
@@ -476,6 +460,10 @@
         </div>
     </div>
 </footer>
+
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <?php
 $currentPage = basename($_SERVER['PHP_SELF']);
@@ -492,38 +480,29 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 <span><i class="bi bi-headset me-2"></i>Hỗ trợ trực tuyến</span>
                 <i class="bi bi-x-lg" style="cursor:pointer" onclick="toggleChat()"></i>
             </div>
-
             <div class="chat-body" id="chatBody">
                 <div class="text-center text-muted small mt-2 mb-3">Chào mừng bạn đến với TravelVN. Chúng tôi có thể giúp gì
                     cho bạn?</div>
             </div>
-
             <div class="chat-footer">
                 <form id="chatForm" autocomplete="off">
                     <input type="hidden" id="chatDepartureId"
                         value="<?= htmlspecialchars($booking['departure_id'] ?? '') ?>">
                     <input type="file" id="chatFile" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" hidden>
                     <div id="filePreview" class="d-none"></div>
-
                     <div class="chat-input-wrapper">
-                        <button type="button" title="Gửi tệp dữ liệu" onclick="document.getElementById('chatFile').click()">
-                            <i class="bi bi-paperclip"></i>
-                        </button>
-                        <button type="button" title="Chia sẻ vị trí" onclick="sendLocation()">
-                            <i class="bi bi-geo-alt"></i>
-                        </button>
-                        <button type="button" id="recordBtn" title="Ghi âm">
-                            <i class="bi bi-mic" id="recordIcon"></i>
-                        </button>
+                        <button type="button" title="Gửi tệp dữ liệu"
+                            onclick="document.getElementById('chatFile').click()"><i class="bi bi-paperclip"></i></button>
+                        <button type="button" title="Chia sẻ vị trí" onclick="sendLocation()"><i
+                                class="bi bi-geo-alt"></i></button>
+                        <button type="button" id="recordBtn" title="Ghi âm"><i class="bi bi-mic"
+                                id="recordIcon"></i></button>
                         <input type="text" id="chatInput" class="chat-input" placeholder="Nhập tin nhắn...">
-                        <button type="submit" class="chat-submit" title="Gửi">
-                            <i class="bi bi-send-fill"></i>
-                        </button>
+                        <button type="submit" class="chat-submit" title="Gửi"><i class="bi bi-send-fill"></i></button>
                     </div>
                 </form>
             </div>
         </div>
-
         <button class="chat-button position-relative" onclick="toggleChat()" id="chatMainButton">
             <i class="bi bi-chat-dots-fill"></i>
             <span id="bubble-chat-badge"
@@ -531,341 +510,339 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 style="font-size: 0.75rem; border: 2px solid white; padding: 4px 6px;">0</span>
         </button>
     </div>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <script>
-        const chatPanel = document.getElementById('chatPanel');
-        const chatBody = document.getElementById('chatBody');
-        const chatInput = document.getElementById('chatInput');
-        const chatFile = document.getElementById('chatFile');
-        const filePreview = document.getElementById('filePreview');
-        const recordBtn = document.getElementById('recordBtn');
-        const recordIcon = document.getElementById('recordIcon');
-        const chatForm = document.getElementById('chatForm');
+<?php endif; ?>
 
-        let isChatOpen = false;
-        let mySessionId = '';
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let selectedFileObject = null;
+<script>
+    // 1. CÁC BIẾN CỦA KHUNG CHAT
+    const chatPanel = document.getElementById('chatPanel');
+    const chatBody = document.getElementById('chatBody');
+    const chatInput = document.getElementById('chatInput');
+    const chatFile = document.getElementById('chatFile');
+    const filePreview = document.getElementById('filePreview');
+    const recordBtn = document.getElementById('recordBtn');
+    const recordIcon = document.getElementById('recordIcon');
+    const chatForm = document.getElementById('chatForm');
 
-        // =========================================================================
-        // KHỞI TẠO KẾT NỐI SOCKET.IO (THAY THẾ PUSHER)
-        // =========================================================================
-        // LƯU Ý: THAY ĐƯỜNG LINK DƯỚI ĐÂY BẰNG LINK RENDER CỦA BẠN
-        const socket = io("wss://travelvn-socketserver.onrender.com");
+    let isChatOpen = false;
+    let mySessionId = '';
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let selectedFileObject = null;
 
-        socket.on("connect", () => {
-            console.log("🟢 Khách hàng đã kết nối với máy chủ Realtime!");
-            // Nếu khách hàng đã có session chat từ trước, báo cho server biết để nhận tin
-            if (mySessionId) {
-                socket.emit("join_room", mySessionId);
-            }
-        });
+    // 2. KHỞI TẠO SOCKET VÀ BIẾN GLOBAL
+    const globalUserRole = '<?= $_SESSION['user']['role'] ?? 'customer' ?>';
+    const socket = io("wss://travelvn-socketserver.onrender.com");
+    window.globalSocket = socket; // Lưu vào window để dễ dàng gọi emit từ các file js khác
 
-        // Lắng nghe tin nhắn mới bắn về từ Server Node.js
-        socket.on("new_message", function (data) {
-            if (data && data.session_id === mySessionId && data.sender_type !== 'customer') {
-                if (isChatOpen) {
-                    // Nếu khách đang mở khung chat thì hiện tin nhắn lên luôn
-                    let content = data.message_type === 'location' ? data.message : (data.message || data.file_url);
-                    appendMessage('admin', content, data.message_type);
-                    fetch('index.php?action=markAsRead', { method: 'POST' });
-                } else {
-                    // Nếu khách đang đóng khung chat thì hiện số thông báo (badge) đỏ
-                    updateCustomerChatBadge();
-                }
-            }
-        });
+    socket.on("connect", () => {
+        console.log("🟢 Khách hàng đã kết nối với máy chủ Realtime!");
+        if (mySessionId) socket.emit("join_room", mySessionId);
+    });
 
-
-        function scrollBottom() {
-            if (chatBody) { chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' }); }
-        }
-
-        function updateCustomerChatBadge() {
-            fetch('index.php?action=getCustomerUnreadCount')
-                .then(res => res.json())
-                .then(data => {
-                    const badge = document.getElementById('bubble-chat-badge');
-                    if (!badge) return;
-                    if (data && data.total > 0) {
-                        badge.innerText = data.total;
-                        badge.classList.remove('d-none');
-                    } else {
-                        badge.classList.add('d-none');
-                    }
-                }).catch(e => console.log(e));
-        }
-
-        function hideBadge() {
-            const badge = document.getElementById('bubble-chat-badge');
-            if (badge) { badge.innerText = '0'; badge.classList.add('d-none'); }
-        }
-
-        function appendMessage(sender, content, messageType = 'text') {
-            if (!chatBody) return;
-            const existingLoader = document.getElementById('temp-chat-loader');
-            if (existingLoader) existingLoader.remove();
-
-            const div = document.createElement('div');
-            div.className = `msg-bubble msg-${sender}`;
-
-            switch (messageType) {
-                case 'image':
-                    let imgSrc = content.startsWith('http') ? content : window.location.origin + content;
-                    div.innerHTML = `<img src="${imgSrc}"class="chat-image"onclick="window.open('${imgSrc}')">`;
-                    break;
-                case 'audio':
-                    let audioSrc = content.startsWith('http') ? content : window.location.origin + '/' + content;
-                    div.innerHTML = `<audio controls class="chat-audio" style="min-width: 200px; height: 40px;"><source src="${audioSrc}"></audio>`;
-                    break;
-                case 'location':
-                    div.innerHTML = `<a href="${content}" target="_blank">📍 Bản đồ vị trí</a>`;
-                    break;
-                case 'file':
-                    const fileName = content.split('/').pop() || "Tài liệu";
-                    div.innerHTML = `<div class="file-box"><i class="bi bi-file-earmark-text"></i><a href="${content}" target="_blank">${fileName}</a></div>`;
-                    break;
-                default:
-                    div.innerText = content;
-            }
-            chatBody.appendChild(div);
-            scrollBottom();
-        }
-
-        function showLoadingIndicator() {
-            const div = document.createElement('div');
-            div.id = 'temp-chat-loader';
-            div.className = 'msg-bubble msg-customer chat-loading';
-            div.innerHTML = `<span></span><span></span><span></span>`;
-            chatBody.appendChild(div);
-            scrollBottom();
-        }
-
-        function loadChatHistory() {
-            fetch('index.php?action=getHistory')
-                .then(res => res.json())
-                .then(data => {
-                    if (!data) return;
-                    chatBody.innerHTML = `<div class="text-center text-muted small mt-2 mb-3">Chào mừng bạn đến với TravelVN 👋</div>`;
-
-                    if (data.length > 0) {
-                        mySessionId = data[0].session_id;
-                        // Quan trọng: Khi lấy được ID phòng rồi thì báo cho Socket.io biết
-                        socket.emit("join_room", mySessionId);
-                    }
-
-                    data.forEach(msg => {
-                        let content = msg.message_type === 'location' ? msg.message : (msg.message || msg.file_url);
-                        appendMessage(msg.sender_type, content, msg.message_type);
-                    });
-                    scrollBottom();
-                });
-        }
-
-        function toggleChat() {
-            isChatOpen = !isChatOpen;
-            chatPanel.style.display = isChatOpen ? 'flex' : 'none';
+    // 3. LẮNG NGHE TIN NHẮN TỪ CHAT (GIỮ NGUYÊN NHƯ BẠN VIẾT)
+    socket.on("new_message", function (data) {
+        if (data && data.session_id === mySessionId && data.sender_type !== 'customer') {
             if (isChatOpen) {
-                loadChatHistory();
+                let content = data.message_type === 'location' ? data.message : (data.message || data.file_url);
+                appendMessage('admin', content, data.message_type);
                 fetch('index.php?action=markAsRead', { method: 'POST' });
-                hideBadge();
+            } else {
+                updateCustomerChatBadge();
             }
         }
+    });
 
-        // ------------------- XỬ LÝ UPLOAD FILE -------------------
-        if (chatFile) {
-            chatFile.addEventListener('change', function () {
-                const file = this.files[0];
-                if (!file) return;
-                selectedFileObject = file;
-                filePreview.classList.remove('d-none');
-                filePreview.innerHTML = `
+    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (NÂNG CẤP MỚI) 🔥
+    socket.on("system_notification", function (data) {
+        let isForMe = false;
+
+        // Phân loại ai được nhận
+        if (data.target_role === 'all') isForMe = true;
+        if (data.target_role === 'admin_group' && (globalUserRole === 'admin' || globalUserRole === 'tour_manager')) isForMe = true;
+        if (data.target_role === globalUserRole) isForMe = true;
+        if (data.target_user_id && data.target_user_id === '<?= $_SESSION['user']['user_id'] ?? '' ?>') isForMe = true;
+
+        if (isForMe) {
+            // Tăng số lượng chuông trên Header (Tìm thẻ span có id global-notif-badge)
+            let badge = document.getElementById('global-notif-badge');
+            if (badge) {
+                let currentCount = parseInt(badge.innerText) || 0;
+                badge.innerText = currentCount + 1;
+                badge.classList.remove('d-none');
+            }
+
+            // Giao diện màu sắc
+            let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)"; // Info mặc định
+            let icon = "📣";
+            if (data.type === 'success') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; icon = "✅"; }
+            if (data.type === 'warning') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; icon = "⚠️"; }
+            if (data.type === 'error') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; icon = "❌"; }
+
+            // Bật Popup Toastify
+            Toastify({
+                text: `${icon} <b>${data.title}</b><br><small>${data.message}</small>`,
+                duration: 6000,
+                close: true,
+                gravity: "bottom",
+                position: "right",
+                style: { background: bgColor, borderRadius: "12px", color: "#fff", padding: "14px 20px" },
+                escapeMarkup: false
+            }).showToast();
+
+            // Kèm hiệu ứng âm thanh nhỏ
+            let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => { });
+        }
+    });
+
+    // CÁC HÀM XỬ LÝ CHAT BÊN DƯỚI (Giữ nguyên y hệt code cũ của bạn)
+    function scrollBottom() { if (chatBody) { chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' }); } }
+
+    function updateCustomerChatBadge() {
+        fetch('index.php?action=getCustomerUnreadCount')
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById('bubble-chat-badge');
+                if (!badge) return;
+                if (data && data.total > 0) { badge.innerText = data.total; badge.classList.remove('d-none'); }
+                else { badge.classList.add('d-none'); }
+            }).catch(e => console.log(e));
+    }
+
+    function hideBadge() {
+        const badge = document.getElementById('bubble-chat-badge');
+        if (badge) { badge.innerText = '0'; badge.classList.add('d-none'); }
+    }
+
+    function appendMessage(sender, content, messageType = 'text') {
+        if (!chatBody) return;
+        const existingLoader = document.getElementById('temp-chat-loader');
+        if (existingLoader) existingLoader.remove();
+
+        const div = document.createElement('div');
+        div.className = `msg-bubble msg-${sender}`;
+
+        switch (messageType) {
+            case 'image':
+                let imgSrc = content.startsWith('http') ? content : window.location.origin + content;
+                div.innerHTML = `<img src="${imgSrc}"class="chat-image"onclick="window.open('${imgSrc}')">`;
+                break;
+            case 'audio':
+                let audioSrc = content.startsWith('http') ? content : window.location.origin + '/' + content;
+                div.innerHTML = `<audio controls class="chat-audio" style="min-width: 200px; height: 40px;"><source src="${audioSrc}"></audio>`;
+                break;
+            case 'location':
+                div.innerHTML = `<a href="${content}" target="_blank">📍 Bản đồ vị trí</a>`;
+                break;
+            case 'file':
+                const fileName = content.split('/').pop() || "Tài liệu";
+                div.innerHTML = `<div class="file-box"><i class="bi bi-file-earmark-text"></i><a href="${content}" target="_blank">${fileName}</a></div>`;
+                break;
+            default:
+                div.innerText = content;
+        }
+        chatBody.appendChild(div);
+        scrollBottom();
+    }
+
+    function showLoadingIndicator() {
+        const div = document.createElement('div');
+        div.id = 'temp-chat-loader';
+        div.className = 'msg-bubble msg-customer chat-loading';
+        div.innerHTML = `<span></span><span></span><span></span>`;
+        chatBody.appendChild(div);
+        scrollBottom();
+    }
+
+    function loadChatHistory() {
+        fetch('index.php?action=getHistory')
+            .then(res => res.json())
+            .then(data => {
+                if (!data) return;
+                chatBody.innerHTML = `<div class="text-center text-muted small mt-2 mb-3">Chào mừng bạn đến với TravelVN 👋</div>`;
+                if (data.length > 0) {
+                    mySessionId = data[0].session_id;
+                    socket.emit("join_room", mySessionId);
+                }
+                data.forEach(msg => {
+                    let content = msg.message_type === 'location' ? msg.message : (msg.message || msg.file_url);
+                    appendMessage(msg.sender_type, content, msg.message_type);
+                });
+                scrollBottom();
+            });
+    }
+
+    function toggleChat() {
+        isChatOpen = !isChatOpen;
+        chatPanel.style.display = isChatOpen ? 'flex' : 'none';
+        if (isChatOpen) {
+            loadChatHistory();
+            fetch('index.php?action=markAsRead', { method: 'POST' });
+            hideBadge();
+        }
+    }
+
+    if (chatFile) {
+        chatFile.addEventListener('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+            selectedFileObject = file;
+            filePreview.classList.remove('d-none');
+            filePreview.innerHTML = `
             <span class="text-truncate" style="max-width: 200px;">📎 ${file.name}</span>
             <span class="remove-preview" onclick="clearFilePreview()">✕</span>`;
-            });
-        }
+        });
+    }
 
-        function clearFilePreview() {
-            selectedFileObject = null;
-            if (chatFile) chatFile.value = '';
-            filePreview.innerHTML = '';
-            filePreview.classList.add('d-none');
-        }
+    function clearFilePreview() {
+        selectedFileObject = null;
+        if (chatFile) chatFile.value = '';
+        filePreview.innerHTML = '';
+        filePreview.classList.add('d-none');
+    }
 
-        // ------------------- XỬ LÝ NÚT GỬI TIN NHẮN -------------------
-        if (chatForm) {
-            chatForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                const textMsg = chatInput.value.trim();
-                const departureId = document.getElementById('chatDepartureId')?.value || '';
+    if (chatForm) {
+        chatForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const textMsg = chatInput.value.trim();
+            const departureId = document.getElementById('chatDepartureId')?.value || '';
 
-                // Trạng thái 1: Khách gửi Tệp/Ảnh đính kèm
-                if (selectedFileObject) {
-                    showLoadingIndicator();
-                    const formData = new FormData();
-                    formData.append('file', selectedFileObject);
-                    formData.append('departure_id', departureId);
-                    clearFilePreview();
-
-                    fetch('index.php?action=uploadFile', { method: 'POST', body: formData })
-                        .then(res => res.json())
-                        .then(data => {
-                            const loader = document.getElementById('temp-chat-loader');
-                            if (loader) loader.remove();
-
-                            if (data && data.url) {
-                                appendMessage('customer', data.url, data.type);
-
-                                // 🔥 Nếu backend trả về Session ID mới, cập nhật lại và Join phòng
-                                if (data.message_data && data.message_data.session_id && !mySessionId) {
-                                    mySessionId = data.message_data.session_id;
-                                    socket.emit("join_room", mySessionId);
-                                }
-                                // 🔥 Phát tín hiệu qua Socket.io cho Admin thấy
-                                if (data.message_data) socket.emit("send_message", data.message_data);
-
-                            } else {
-                                alert("Tải lên thất bại: " + (data.error || 'Server không thể lưu file'));
-                            }
-                        })
-                        .catch(err => {
-                            const loader = document.getElementById('temp-chat-loader');
-                            if (loader) loader.remove();
-                            alert("Lỗi kết nối máy chủ khi tải lên file!");
-                        });
-                }
-                // Trạng thái 2: Khách gửi tin nhắn văn bản (Text)
-                else if (textMsg) {
-                    appendMessage('customer', textMsg, 'text');
-                    chatInput.value = '';
-                    const formData = new FormData();
-                    formData.append('message', textMsg);
-                    formData.append('sender_type', 'customer');
-                    formData.append('departure_id', departureId);
-
-                    fetch('index.php?action=sendMessage', { method: 'POST', body: formData })
-                        .then(res => res.json())
-                        .then(data => {
-                            // Cập nhật ID phòng nếu đây là tin nhắn đầu tiên của khách mới
-                            if (data && data.session_id && !mySessionId) {
-                                mySessionId = data.session_id;
-                                socket.emit("join_room", mySessionId);
-                            }
-
-                            // 🔥 Phát tín hiệu tin nhắn vừa gửi qua Socket.io cho Admin thấy
-                            if (data && data.user_message) {
-                                socket.emit("send_message", data.user_message);
-                            }
-
-                            // Nếu bot tự động trả lời, phát luôn tin nhắn của bot qua Socket
-                            if (data && data.is_first && data.bot_message) {
-                                appendMessage('admin', data.bot_message.message, 'text');
-                                socket.emit("send_message", data.bot_message);
-                            }
-                        });
-                }
-            });
-        }
-
-        // ------------------- XỬ LÝ GỬI VỊ TRÍ -------------------
-        function sendLocation() {
-            if (navigator.geolocation) {
+            if (selectedFileObject) {
                 showLoadingIndicator();
-                navigator.geolocation.getCurrentPosition(function (pos) {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
-                    const mapLink = `https://maps.google.com/?q=${lat},${lng}`;
-                    appendMessage('customer', mapLink, 'location');
+                const formData = new FormData();
+                formData.append('file', selectedFileObject);
+                formData.append('departure_id', departureId);
+                clearFilePreview();
 
-                    fetch('index.php?action=sendLocation', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: `latitude=${lat}&longitude=${lng}`
-                    })
-                        .then(res => res.json())
-                        .then(data => {
-                            const loader = document.getElementById('temp-chat-loader');
-                            if (loader) loader.remove();
-
+                fetch('index.php?action=uploadFile', { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(data => {
+                        const loader = document.getElementById('temp-chat-loader');
+                        if (loader) loader.remove();
+                        if (data && data.url) {
+                            appendMessage('customer', data.url, data.type);
                             if (data.message_data && data.message_data.session_id && !mySessionId) {
                                 mySessionId = data.message_data.session_id;
                                 socket.emit("join_room", mySessionId);
                             }
-                            // 🔥 Phát tín hiệu qua Socket.io
-                            if (data.status === 'success') socket.emit("send_message", data.message_data);
-                        });
-                });
+                            if (data.message_data) socket.emit("send_message", data.message_data);
+                        } else { alert("Tải lên thất bại: " + (data.error || 'Server không thể lưu file')); }
+                    })
+                    .catch(err => {
+                        const loader = document.getElementById('temp-chat-loader');
+                        if (loader) loader.remove();
+                        alert("Lỗi kết nối máy chủ khi tải lên file!");
+                    });
             }
-        }
+            else if (textMsg) {
+                appendMessage('customer', textMsg, 'text');
+                chatInput.value = '';
+                const formData = new FormData();
+                formData.append('message', textMsg);
+                formData.append('sender_type', 'customer');
+                formData.append('departure_id', departureId);
 
-        // ------------------- XỬ LÝ GHI ÂM (VOICE) -------------------
-        if (recordBtn) {
-            recordBtn.onclick = async () => {
-                if (mediaRecorder && mediaRecorder.state === "recording") {
-                    mediaRecorder.stop();
-                    return;
-                }
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-
-                    mediaRecorder.ondataavailable = e => { audioChunks.push(e.data); };
-
-                    mediaRecorder.onstop = () => {
-                        recordBtn.classList.remove('recording');
-                        recordIcon.className = 'bi bi-mic';
-
-                        showLoadingIndicator();
-
-                        const audioType = mediaRecorder.mimeType || 'audio/webm';
-                        const audioBlob = new Blob(audioChunks, { type: audioType });
-
-                        const formData = new FormData();
-                        formData.append('voice', audioBlob, 'voice_record');
-                        formData.append('departure_id', document.getElementById('chatDepartureId')?.value || '');
-
-                        fetch('index.php?action=uploadVoice', { method: 'POST', body: formData })
-                            .then(res => res.json())
-                            .then(data => {
-                                const loader = document.getElementById('temp-chat-loader');
-                                if (loader) loader.remove();
-
-                                if (data && data.url) {
-                                    appendMessage('customer', data.url, 'audio');
-
-                                    if (data.message_data && data.message_data.session_id && !mySessionId) {
-                                        mySessionId = data.message_data.session_id;
-                                        socket.emit("join_room", mySessionId);
-                                    }
-                                    // 🔥 Phát tín hiệu qua Socket.io
-                                    if (data.message_data) socket.emit("send_message", data.message_data);
-
-                                } else {
-                                    alert("Ghi âm thất bại: " + (data.error || 'Server không thể lưu file'));
-                                }
-                            })
-                            .catch(err => {
-                                const loader = document.getElementById('temp-chat-loader');
-                                if (loader) loader.remove();
-                                alert("Lỗi kết nối khi gửi ghi âm!");
-                            });
-
-                        stream.getTracks().forEach(track => track.stop());
-                    };
-                    mediaRecorder.start();
-                    recordBtn.classList.add('recording');
-                    recordIcon.className = 'bi bi-stop-fill';
-
-                } catch (err) {
-                    alert('Không tìm thấy Microphone hoặc bạn chưa cấp quyền.');
-                }
-            };
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            updateCustomerChatBadge();
+                fetch('index.php?action=sendMessage', { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.session_id && !mySessionId) {
+                            mySessionId = data.session_id;
+                            socket.emit("join_room", mySessionId);
+                        }
+                        if (data && data.user_message) {
+                            socket.emit("send_message", data.user_message);
+                        }
+                        if (data && data.is_first && data.bot_message) {
+                            appendMessage('admin', data.bot_message.message, 'text');
+                            socket.emit("send_message", data.bot_message);
+                        }
+                    });
+            }
         });
-    </script>
-<?php endif; ?>
+    }
+
+    function sendLocation() {
+        if (navigator.geolocation) {
+            showLoadingIndicator();
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const mapLink = `https://maps.google.com/?q=${lat},${lng}`;
+                appendMessage('customer', mapLink, 'location');
+
+                fetch('index.php?action=sendLocation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `latitude=${lat}&longitude=${lng}`
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        const loader = document.getElementById('temp-chat-loader');
+                        if (loader) loader.remove();
+                        if (data.message_data && data.message_data.session_id && !mySessionId) {
+                            mySessionId = data.message_data.session_id;
+                            socket.emit("join_room", mySessionId);
+                        }
+                        if (data.status === 'success') socket.emit("send_message", data.message_data);
+                    });
+            });
+        }
+    }
+
+    if (recordBtn) {
+        recordBtn.onclick = async () => {
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                mediaRecorder.stop();
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => { audioChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    recordBtn.classList.remove('recording');
+                    recordIcon.className = 'bi bi-mic';
+                    showLoadingIndicator();
+
+                    const audioType = mediaRecorder.mimeType || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: audioType });
+                    const formData = new FormData();
+                    formData.append('voice', audioBlob, 'voice_record');
+                    formData.append('departure_id', document.getElementById('chatDepartureId')?.value || '');
+
+                    fetch('index.php?action=uploadVoice', { method: 'POST', body: formData })
+                        .then(res => res.json())
+                        .then(data => {
+                            const loader = document.getElementById('temp-chat-loader');
+                            if (loader) loader.remove();
+                            if (data && data.url) {
+                                appendMessage('customer', data.url, 'audio');
+                                if (data.message_data && data.message_data.session_id && !mySessionId) {
+                                    mySessionId = data.message_data.session_id;
+                                    socket.emit("join_room", mySessionId);
+                                }
+                                if (data.message_data) socket.emit("send_message", data.message_data);
+                            } else { alert("Ghi âm thất bại: " + (data.error || 'Server không thể lưu file')); }
+                        })
+                        .catch(err => {
+                            const loader = document.getElementById('temp-chat-loader');
+                            if (loader) loader.remove();
+                            alert("Lỗi kết nối khi gửi ghi âm!");
+                        });
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                mediaRecorder.start();
+                recordBtn.classList.add('recording');
+                recordIcon.className = 'bi bi-stop-fill';
+            } catch (err) {
+                alert('Không tìm thấy Microphone hoặc bạn chưa cấp quyền.');
+            }
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        updateCustomerChatBadge();
+    });
+</script>
