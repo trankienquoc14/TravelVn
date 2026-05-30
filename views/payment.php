@@ -10,9 +10,9 @@ include 'layouts/header.php';
 $payment_id = $payment['payment_id'] ?? $_GET['payment_id'] ?? 0;
 
 // 2. KHAI BÁO THÔNG TIN TẠO MÃ QR (Đã thêm vào đây để tự động chạy)
-$bank_id = "TPBank";
-$account_no = "00000419627";
-$account_name = "DOAN THI TRAM"; // Tên in trên thẻ
+$bank_id = "Sacombank";
+$account_no = "050134910132";
+$account_name = "TRAN KIEN QUOC"; // Tên in trên thẻ
 $amount = $payment['amount'] ?? 0;
 $info = "THANHTOAN" . $payment_id;
 
@@ -245,14 +245,18 @@ $qr_url .= "&accountName=" . urlencode($account_name);
     // 2. Lấy mã băm bảo mật truyền vào JS để kiểm tra trạng thái
     const currentPaymentId = <?= json_encode($secure_payment_id) ?>;
 
+    // 🔥 SỬA LỖI: Khai báo biến đếm ngược ra ngoài để có thể dừng nó bất cứ lúc nào
+    let countdownInterval;
+
     // 3. Hàm kiểm tra trạng thái tự động (Polling)
     function checkStatus() {
         fetch(`index.php?action=checkPaymentStatus&payment_id=${currentPaymentId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'paid') {
-                    // Xóa vòng lặp khi thành công
+                    // 🔥 SỬA LỖI: Khi đã thanh toán, phải xóa CẢ HAI vòng lặp
                     clearInterval(pollingInterval);
+                    clearInterval(countdownInterval); // DỪNG ĐỒNG HỒ ĐẾM NGƯỢC!
                     localStorage.removeItem(STORAGE_KEY);
 
                     // 🔥 REALTIME: BẮN THÔNG BÁO CHO ADMIN & NHÂN VIÊN BIẾT CÓ TIỀN VÀO
@@ -305,12 +309,13 @@ $qr_url .= "&accountName=" . urlencode($account_name);
 
     const timerDisplay = document.getElementById('countdown-timer');
 
-    const countdown = setInterval(function () {
+    // 🔥 SỬA LỖI: Gắn vào biến countdownInterval đã khai báo ở trên
+    countdownInterval = setInterval(function () {
         let now = Date.now();
         let timeRemaining = Math.floor((expireTime - now) / 1000);
 
         if (timeRemaining <= 0) {
-            clearInterval(countdown);
+            clearInterval(countdownInterval); // 🔥 SỬA LỖI TÊN BIẾN
             clearInterval(pollingInterval);
             localStorage.removeItem(STORAGE_KEY);
 
