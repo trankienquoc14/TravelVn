@@ -564,30 +564,45 @@
     </script>
     <?php unset($_SESSION['review_success']); ?>
 <?php endif; ?>
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var pusher = new Pusher('e5405b1b2139fed6f8bc', { cluster: 'ap1' });
-        var userChannel = pusher.subscribe('user-channel-<?= $_SESSION['user']['user_id'] ?>');
-        
-        userChannel.bind('status-changed', function(data) {
-            // Tìm badge trạng thái của đơn hàng trên giao diện và update ngay
-            var badge = document.getElementById('badge-' + data.booking_id);
+    document.addEventListener("DOMContentLoaded", function () {
+        const socket = io("wss://travelvn-socketserver.onrender.com", {
+            transports: ["websocket"]
+        });
+
+        const userId = "<?= $_SESSION['user']['user_id'] ?? 0 ?>";
+
+        socket.emit("join_user_room", {
+            user_id: userId
+        });
+
+        socket.on("payment_success", function (data) {
+            console.log("Nhận realtime payment_success:", data);
+
+            const badge = document.getElementById("badge-" + data.booking_id);
+
             if (badge) {
-                // Xóa các class màu cũ (pending, confirmed, cancelled, refunded)
-                badge.classList.remove('badge-pending', 'badge-confirmed', 'badge-cancelled', 'badge-refunded');
-                // Thêm class màu mới và text mới
-                badge.classList.add(data.badge_class);
-                badge.innerText = data.status_text;
-                
-                // Hiện thông báo Toast góc phải
-                Swal.fire({
-                    toast: true, position: 'top-end', icon: 'success',
-                    title: 'Cập nhật đơn hàng',
-                    text: 'Đơn hàng #' + data.booking_id + ' của bạn vừa được chuyển sang: ' + data.status_text,
-                    showConfirmButton: false, timer: 6000
-                });
+                badge.classList.remove(
+                    "badge-pending",
+                    "badge-confirmed",
+                    "badge-cancelled",
+                    "badge-refunded"
+                );
+
+                badge.classList.add(data.badge_class || "badge-confirmed");
+                badge.innerText = data.status_text || "Đã xác nhận";
             }
+
+            Swal.fire({
+                toast: true,
+                position: "top-end",
+                icon: "success",
+                title: "Thanh toán thành công",
+                text: data.message || "Đơn hàng của bạn đã được xác nhận.",
+                showConfirmButton: false,
+                timer: 5000
+            });
         });
     });
 </script>

@@ -113,11 +113,20 @@ class PaymentController
 
         // Nếu đã thanh toán rồi thì khỏi kiểm tra API
         if ($payment['payment_status'] == 'paid') {
-            echo json_encode([
-                "status" => "paid"
-            ]);
-            exit;
-        }
+    echo json_encode([
+        "status" => "paid",
+        "realtime" => [
+            "event" => "payment_success",
+            "user_id" => $payment['user_id'],
+            "booking_id" => $payment['booking_id'],
+            "payment_id" => $payment_id,
+            "status_text" => "Đã xác nhận",
+            "badge_class" => "badge-confirmed",
+            "message" => "Đơn hàng #" . str_pad($payment['booking_id'], 6, '0', STR_PAD_LEFT) . " đã được thanh toán."
+        ]
+    ]);
+    exit;
+}
 
         // Gọi SePay API
         $url = "https://my.sepay.vn/userapi/transactions/list?account_number="
@@ -219,24 +228,18 @@ class PaymentController
 
                 $this->db->commit();
 
-                // PUSHER
-                require_once __DIR__ . '/../config/pusher_helper.php';
-
-                $pusher = getPusherInstance();
-
-                $pusher->trigger(
-                    'user-channel-' . $payment['user_id'],
-                    'status-changed',
-                    [
-                        'booking_id' => $payment['booking_id'],
-                        'status_text' => 'Đã xác nhận',
-                        'badge_class' => 'badge-confirmed'
-                    ]
-                );
-
                 echo json_encode([
-                    "status" => "paid"
-                ]);
+    "status" => "paid",
+    "realtime" => [
+        "event" => "payment_success",
+        "user_id" => $payment['user_id'],
+        "booking_id" => $payment['booking_id'],
+        "payment_id" => $payment_id,
+        "status_text" => "Đã xác nhận",
+        "badge_class" => "badge-confirmed",
+        "message" => "Thanh toán QR thành công. Đơn hàng #" . str_pad($payment['booking_id'], 6, '0', STR_PAD_LEFT) . " đã được xác nhận."
+    ]
+]);
 
             } catch (Exception $e) {
 

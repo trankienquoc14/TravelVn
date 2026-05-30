@@ -219,8 +219,18 @@ $qr_url .= "&accountName=" . urlencode($account_name);
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
+    const socket = io("wss://travelvn-socketserver.onrender.com", {
+        transports: ["websocket"]
+    });
+
+    const currentUserId = "<?= $_SESSION['user']['user_id'] ?? 0 ?>";
+
+    socket.emit("join_user_room", {
+        user_id: currentUserId
+    });
     // 1. Hàm sao chép văn bản (Giữ nguyên)
     function copyText(elementId, isAmount = false) {
         let textToCopy = document.getElementById(elementId).innerText;
@@ -251,12 +261,14 @@ $qr_url .= "&accountName=" . urlencode($account_name);
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'paid') {
-                    // Xóa vòng lặp khi thành công
-                    clearInterval(pollingInterval);
-                    localStorage.removeItem(STORAGE_KEY);
-                    
-                    // Giao diện thông báo chuyên nghiệp mới
-                    Swal.fire({
+    clearInterval(pollingInterval);
+    localStorage.removeItem(STORAGE_KEY);
+
+    if (data.realtime) {
+        socket.emit("payment_success", data.realtime);
+    }
+
+    Swal.fire({
                         title: 'Thanh toán thành công!',
                         text: 'Cảm ơn bạn đã tin tưởng TravelVN. Đơn đặt tour của bạn đã được xác nhận.',
                         icon: 'success',
