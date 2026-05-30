@@ -1,3 +1,356 @@
+<?php include __DIR__ . "/../layouts/header.php"; ?>
+
+<style>
+    /* CUSTOM CSS CHO TRUNG TÂM HỖ TRỢ */
+    :root {
+        --chat-bg: #f8fafc;
+        --chat-border: #e2e8f0;
+        --chat-primary: #0ea5e9;
+        --chat-primary-light: #e0f2fe;
+        --chat-me: #0ea5e9;
+        --chat-customer: #ffffff;
+    }
+
+    .support-card {
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        border: 1px solid var(--chat-border);
+        height: 85vh;
+        min-height: 550px;
+        overflow: hidden;
+    }
+
+    @media (max-width: 767.98px) {
+        .support-card {
+            height: auto;
+            overflow: hidden;
+        }
+
+        .session-list-col {
+            height: 40vh !important;
+            border-bottom: 2px solid var(--chat-border);
+        }
+
+        .chat-main-col {
+            height: 60vh !important;
+        }
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    .session-list-col {
+        background: #ffffff;
+    }
+
+    .session-item {
+        transition: all 0.2s ease;
+        border-bottom: 1px solid var(--chat-border) !important;
+        cursor: pointer;
+        padding: 16px;
+    }
+
+    .session-item:hover {
+        background: #f1f5f9;
+    }
+
+    .session-item.active {
+        background: var(--chat-primary-light);
+        border-right: 4px solid var(--chat-primary) !important;
+    }
+
+    .msg-bubble {
+        max-width: 75%;
+        padding: 14px 18px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .msg-me {
+        background: var(--chat-me);
+        color: #ffffff;
+        border-radius: 20px 20px 4px 20px;
+        align-self: flex-end;
+    }
+
+    .msg-customer {
+        background: var(--chat-customer);
+        color: #1e293b;
+        border: 1px solid var(--chat-border);
+        border-radius: 20px 20px 20px 4px;
+        align-self: flex-start;
+    }
+
+    .chat-input-area {
+        background: #ffffff;
+        padding: 15px 20px;
+        border-top: 1px solid var(--chat-border);
+    }
+
+    .chat-input-wrapper {
+        background: #f1f5f9;
+        border-radius: 25px;
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chat-input-wrapper input {
+        border: none;
+        background: transparent;
+        box-shadow: none !important;
+        flex: 1;
+    }
+
+    .chat-input-wrapper button[type="button"] {
+        background: transparent;
+        border: none;
+        color: #64748b;
+        padding: 4px 8px;
+        border-radius: 50%;
+        transition: 0.2s;
+    }
+
+    .chat-input-wrapper button[type="button"]:hover {
+        color: var(--chat-primary);
+        background: #e2e8f0;
+    }
+
+    .btn-send {
+        border-radius: 50%;
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .info-sidebar {
+        background: #ffffff;
+        border-left: 1px solid var(--chat-border);
+        padding: 20px;
+    }
+
+    .info-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--chat-primary-light);
+        color: var(--chat-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 15px;
+    }
+
+    .chat-image {
+        max-width: 220px;
+        border-radius: 12px;
+        cursor: pointer;
+        border: 2px solid #e2e8f0;
+    }
+
+    .chat-audio {
+        width: 100%;
+        max-width: 240px;
+        margin-top: 5px;
+        height: 38px;
+    }
+
+    .file-box {
+        padding: 10px 14px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.05);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+
+    .msg-me .file-box a {
+        color: white;
+        text-decoration: underline;
+    }
+
+    .msg-customer .file-box a {
+        color: var(--chat-primary);
+        text-decoration: none;
+    }
+
+    .msg-location {
+        color: inherit;
+        text-decoration: underline;
+        font-weight: bold;
+    }
+
+    #adminFilePreview {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        background: #e0f2fe;
+        border: 1px dashed #0ea5e9;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .recording {
+        background: #ef4444 !important;
+        color: white !important;
+        animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.1);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .temp-loader span {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: currentColor;
+        border-radius: 50%;
+        animation: blink 1.4s infinite;
+    }
+
+    .temp-loader span:nth-child(2) {
+        animation-delay: .2s;
+    }
+
+    .temp-loader span:nth-child(3) {
+        animation-delay: .4s;
+    }
+
+    @keyframes blink {
+        0% {
+            opacity: .2;
+        }
+
+        20% {
+            opacity: 1;
+        }
+
+        100% {
+            opacity: .2;
+        }
+    }
+</style>
+
+<div class="container-fluid py-4" style="background: var(--chat-bg);">
+    <div class="row">
+        <?php include __DIR__ . "/../layouts/sidebar_manager.php"; ?>
+
+        <div class="col-lg-9">
+            <div class="support-card">
+                <div class="row g-0 h-100">
+
+                    <div class="col-md-3 border-end h-100 d-flex flex-column session-list-col">
+                        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-white">
+                            <h5 class="mb-0 fw-bold" style="color: #0f172a;">Hộp thư</h5>
+                            <button class="btn btn-sm btn-light rounded-circle" onclick="loadSessions()"
+                                title="Làm mới">
+                                <i class="bi bi-arrow-clockwise text-primary"></i>
+                            </button>
+                        </div>
+                        <div class="p-2 border-bottom">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light border-0"><i
+                                        class="bi bi-search text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-0" placeholder="Tìm kiếm...">
+                            </div>
+                        </div>
+                        <div class="list-group list-group-flush overflow-auto flex-grow-1" id="sessionList">
+                            <div class="text-center p-5 text-muted small">Đang tải hộp thư...</div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 h-100 d-flex flex-column chat-main-col" style="background: #f8fafc;">
+                        <div id="chatHeader" class="p-3 border-bottom bg-white d-flex align-items-center fw-bold"
+                            style="height: 70px; color: #0f172a;">
+                            <span class="text-muted fw-normal"><i class="bi bi-chat-left-text me-2"></i>Chọn đoạn chat
+                                để bắt đầu</span>
+                        </div>
+
+                        <div id="adminChatBody" class="p-4 flex-grow-1 overflow-auto d-flex flex-column gap-3">
+                            <div class="text-center my-auto" style="opacity: 0.4;">
+                                <img src="https://cdn-icons-png.flaticon.com/512/4080/4080911.png"
+                                    style="width: 120px; margin-bottom: 20px;">
+                                <h5 class="fw-bold">Trung tâm hỗ trợ TravelVN</h5>
+                                <p class="text-muted small">Mọi tin nhắn từ khách hàng sẽ hiển thị tại đây.</p>
+                            </div>
+                        </div>
+
+                        <div class="chat-input-area">
+                            <form id="adminChatForm" class="d-none">
+                                <input type="file" id="adminChatFile" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                    hidden>
+                                <div id="adminFilePreview" class="d-none"></div>
+
+                                <div class="chat-input-wrapper">
+                                    <button type="button" title="Gửi tệp"
+                                        onclick="document.getElementById('adminChatFile').click()"><i
+                                            class="bi bi-paperclip fs-5"></i></button>
+                                    <button type="button" title="Chia sẻ vị trí" onclick="sendAdminLocation()"><i
+                                            class="bi bi-geo-alt fs-5"></i></button>
+                                    <button type="button" id="adminRecordBtn" title="Ghi âm"><i class="bi bi-mic fs-5"
+                                            id="adminRecordIcon"></i></button>
+
+                                    <input type="text" id="adminChatInput" class="form-control px-2"
+                                        placeholder="Nhập tin nhắn..." autocomplete="off">
+
+                                    <button class="btn btn-primary btn-send" type="submit">
+                                        <i class="bi bi-send-fill"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 h-100 d-flex flex-column info-sidebar d-none d-md-flex">
+                        <div id="customerInfoPanel" class="text-center mt-4" style="opacity: 0.3;">
+                            <div class="info-avatar"><i class="bi bi-person"></i></div>
+                            <h6 class="fw-bold text-dark">Thông tin người dùng</h6>
+                            <p class="small text-muted mb-4">Chưa có thông tin</p>
+                            <hr class="text-muted">
+                            <div class="text-start mt-4">
+                                <p class="small text-muted mb-1"><i class="bi bi-clock me-2"></i>Trạng thái: <span
+                                        class="badge bg-secondary">Offline</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
@@ -8,32 +361,26 @@
     let adminSelectedFile = null;
 
     // =========================================================================
-    // KHỞI TẠO KẾT NỐI SOCKET.IO (THAY THẾ PUSHER)
+    // KHỞI TẠO KẾT NỐI SOCKET.IO
     // =========================================================================
-    const socket = io("wss://travelvn-socketserver.onrender.com"); // <-- Link máy chủ Render của bạn
+    // LƯU Ý: Thay cái wss:// dưới đây bằng link thật của Render
+    const socket = io("wss://travelvn-socketserver.onrender.com");
 
-    // Lắng nghe sự kiện kết nối thành công (Tùy chọn: Để log kiểm tra)
     socket.on("connect", () => {
         console.log("🟢 Đã kết nối với máy chủ Realtime!");
     });
 
-    // Lắng nghe tin nhắn mới từ Socket.io
     socket.on("new_message", function (data) {
-        // Chỉ vẽ tin nhắn ra màn hình nếu đang mở đúng phòng chat đó
         if (data.session_id === currentSessionId) {
-            // Không tự vẽ lại tin nhắn của chính mình (vì ajax gửi thành công đã tự vẽ rồi)
             if (data.sender_type !== 'admin' && data.sender_type !== 'tour_manager') {
                 let content = data.message_type === 'location' ? data.message : (data.message || data.file_url);
                 appendMessageUI(data.sender_type, content, data.message_type);
                 fetch(apiUrl + '?action=markAsRead&session_id=' + data.session_id, { method: 'POST' });
             }
         }
-        // Cập nhật lại danh sách hộp thư bên trái (để nhảy tin nhắn mới nhất lên đầu)
         loadSessions();
     });
 
-
-    // 1. TẢI HỘP THƯ (Giữ nguyên)
     function loadSessions() {
         fetch(apiUrl + '?action=getSessions')
             .then(res => res.json())
@@ -75,13 +422,9 @@
             });
     }
 
-    // 2. MỞ KHUNG CHAT
     function openChat(sessionId, senderName) {
         currentSessionId = sessionId;
-
-        // Báo cho máy chủ Socket biết Admin vừa chui vào phòng (session_id) này
         socket.emit("join_room", sessionId);
-
         document.getElementById('adminChatForm').classList.remove('d-none');
         clearAdminFilePreview();
 
@@ -129,7 +472,6 @@
         event.currentTarget.classList.add('active');
     }
 
-    // 3. VẼ TIN NHẮN THEO ĐỊNH DẠNG (Giữ nguyên)
     function appendMessageUI(type, content, messageType = 'text') {
         const body = document.getElementById('adminChatBody');
         const isMe = (type === 'admin' || type === 'tour_manager' || type === 'guide');
@@ -139,9 +481,7 @@
         const loader = document.getElementById('admin-temp-loader');
         if (loader) loader.remove();
 
-        if (!content || content === 'null' || content === 'undefined') {
-            content = '';
-        }
+        if (!content || content === 'null' || content === 'undefined') { content = ''; }
 
         let finalContent = '';
         switch (messageType) {
@@ -173,7 +513,6 @@
         body.scrollTop = body.scrollHeight;
     }
 
-    // 4. PREVIEW VÀ UPLOAD FILE (Giữ nguyên)
     const adminChatFile = document.getElementById('adminChatFile');
     const adminFilePreview = document.getElementById('adminFilePreview');
 
@@ -192,16 +531,12 @@
         adminFilePreview.classList.add('d-none');
     }
 
-    // =========================================================================
-    // 5. GỬI TIN NHẮN VÀ PHÁT QUA SOCKET.IO
-    // =========================================================================
     document.getElementById('adminChatForm').addEventListener('submit', function (e) {
         e.preventDefault();
         const input = document.getElementById('adminChatInput');
         const textMsg = input.value.trim();
         if (!currentSessionId) return;
 
-        // Trạng thái 1: Admin gửi file / ảnh đính kèm
         if (adminSelectedFile) {
             showAdminLoading();
             const formData = new FormData();
@@ -218,15 +553,9 @@
                     if (data && data.url) {
                         let ext = data.url.split('.').pop().toLowerCase();
                         let type = data.type || (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) ? 'image' : 'file');
-
                         appendMessageUI('admin', data.url, type);
-
-                        // 🔥 Bắn tín hiệu qua Socket.io
                         if (data.message_data) socket.emit("send_message", data.message_data);
-
-                    } else {
-                        alert("Gửi tệp thất bại: " + (data.error || 'Server không thể lưu file'));
-                    }
+                    } else { alert("Gửi tệp thất bại: " + (data.error || 'Server không thể lưu file')); }
                 })
                 .catch(err => {
                     const loader = document.getElementById('admin-temp-loader');
@@ -234,7 +563,6 @@
                     alert("Lỗi kết nối máy chủ khi tải lên tệp!");
                 });
         }
-        // Trạng thái 2: Admin gửi chữ (Text)
         else if (textMsg) {
             appendMessageUI('admin', textMsg, 'text');
             input.value = '';
@@ -247,14 +575,12 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // 🔥 Bắn tín hiệu qua Socket.io
                         socket.emit("send_message", data.user_message);
                     }
                 });
         }
     });
 
-    // 6. GỬI ĐỊNH VỊ QUA SOCKET.IO
     function sendAdminLocation() {
         if (navigator.geolocation && currentSessionId) {
             showAdminLoading();
@@ -273,14 +599,12 @@
                     .then(data => {
                         const loader = document.getElementById('admin-temp-loader');
                         if (loader) loader.remove();
-                        // 🔥 Bắn tín hiệu qua Socket.io
                         if (data.status === 'success') socket.emit("send_message", data.message_data);
                     });
             });
         }
     }
 
-    // 7. GHI ÂM VÀ GỬI QUA SOCKET.IO
     const adminRecordBtn = document.getElementById('adminRecordBtn');
     const adminRecordIcon = document.getElementById('adminRecordIcon');
 
@@ -298,7 +622,6 @@
             adminMediaRecorder.onstop = () => {
                 adminRecordBtn.classList.remove('recording');
                 adminRecordIcon.className = 'bi bi-mic fs-5';
-
                 showAdminLoading();
 
                 const audioType = adminMediaRecorder.mimeType || 'audio/webm';
@@ -313,24 +636,18 @@
                     .then(data => {
                         const loader = document.getElementById('admin-temp-loader');
                         if (loader) loader.remove();
-
                         if (data && data.url) {
                             appendMessageUI('admin', data.url, 'audio');
-                            // 🔥 Bắn tín hiệu qua Socket.io
                             if (data.message_data) socket.emit("send_message", data.message_data);
-                        } else {
-                            alert("Ghi âm thất bại: " + (data.error || "Lỗi server"));
-                        }
+                        } else { alert("Ghi âm thất bại: " + (data.error || "Lỗi server")); }
                     })
                     .catch(err => {
                         const loader = document.getElementById('admin-temp-loader');
                         if (loader) loader.remove();
                         alert("Lỗi kết nối khi gửi ghi âm!");
                     });
-
                 stream.getTracks().forEach(track => track.stop());
             };
-
             adminMediaRecorder.start();
             adminRecordBtn.classList.add('recording');
             adminRecordIcon.className = 'bi bi-stop-fill fs-5';
@@ -340,7 +657,6 @@
         }
     };
 
-    // 8. XÓA CUỘC TRÒ CHUYỆN (Giữ nguyên)
     function deleteChatSession(sessionId, e) {
         if (e) e.stopPropagation();
         if (!confirm('Xóa toàn bộ cuộc trò chuyện này?')) return;
@@ -363,3 +679,5 @@
 
     loadSessions();
 </script>
+
+<?php include __DIR__ . "/../layouts/footer.php"; ?>
