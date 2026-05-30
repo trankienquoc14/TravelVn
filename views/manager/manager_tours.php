@@ -100,17 +100,29 @@
                     <table class="table mb-0 align-middle" id="toursTable">
                         <thead>
                             <tr>
-                                <th width="40%">Thông tin Tour</th>
-                                <th width="15%">Điểm đến</th>
-                                <th width="15%" class="text-end">Giá (VNĐ)</th>
-                                <th width="15%" class="text-center">Thời gian</th>
-                                <th width="15%" class="text-center">Thao tác</th>
+                                <th width="32%">Thông tin Tour</th>
+    <th width="13%">Điểm đến</th>
+    <th width="13%" class="text-end">Giá gốc</th>
+    <th width="12%" class="text-center">Giảm giá</th>
+    <th width="15%" class="text-end">Giá đang bán</th>
+    <th width="10%" class="text-center">Thời gian</th>
+    <th width="10%" class="text-center">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (isset($tours) && $tours->rowCount() > 0): ?>
                                 <?php while ($row = $tours->fetch(PDO::FETCH_ASSOC)): ?>
-                                    <tr class="tour-row">
+    <?php
+        $originalPrice = (float)($row['price'] ?? 0);
+        $discountPercent = (float)($row['discount_percent'] ?? 0);
+        $hasDiscount = $discountPercent > 0;
+
+        $sellingPrice = $hasDiscount
+            ? $originalPrice - ($originalPrice * $discountPercent / 100)
+            : $originalPrice;
+    ?>
+
+    <tr class="tour-row">
                                         <td>
                                             <div class="d-flex align-items-center gap-3">
                                                 <img src="<?= !empty($row['image']) ? '/uploads/' . $row['image'] : 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=100' ?>" class="tour-thumb" alt="Tour image">
@@ -129,8 +141,25 @@
                                             </span>
                                         </td>
                                         
-                                        <td class="text-end fw-bold text-danger" style="font-size: 1.05rem;">
-                                            <?= number_format($row['price']) ?> đ
+                                        <td class="text-end fw-semibold text-muted">
+    <?= number_format($originalPrice) ?> đ
+</td>
+
+<td class="text-center">
+    <?php if ($hasDiscount): ?>
+        <span class="badge bg-danger px-3 py-2">
+            -<?= (int)$discountPercent ?>%
+        </span>
+    <?php else: ?>
+        <span class="badge bg-secondary bg-opacity-10 text-secondary border px-3 py-2">
+            Không giảm
+        </span>
+    <?php endif; ?>
+</td>
+
+<td class="text-end fw-bold text-danger" style="font-size: 1.05rem;">
+    <?= number_format($sellingPrice) ?> đ
+</td>
                                         </td>
                                         
                                         <td class="text-center">
@@ -153,7 +182,7 @@
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr id="noDataRow">
-                                    <td colspan="5" class="text-center py-5 text-muted">
+                                    <td colspan="7" class="text-center py-5 text-muted">
                                         <i class="bi bi-inbox fs-1 d-block mb-3 text-secondary opacity-25"></i>
                                         <h5 class="fw-bold text-dark">Chưa có dữ liệu tour</h5>
                                         <p class="mb-0">Hãy bấm nút "Thêm Tour Mới" để bắt đầu bán hàng.</p>
@@ -196,7 +225,7 @@
         if (visibleCount === 0 && rows.length > 0) {
             if (!noDataRow) {
                 let tbody = document.querySelector('#toursTable tbody');
-                tbody.insertAdjacentHTML('beforeend', '<tr id="noDataRow"><td colspan="5" class="text-center py-5 text-muted">Không tìm thấy tour phù hợp với từ khóa của bạn.</td></tr>');
+                tbody.insertAdjacentHTML('beforeend', '<tr id="noDataRow"><td colspan="7" class="text-center py-5 text-muted">Không tìm thấy tour phù hợp với từ khóa của bạn.</td></tr>');
             } else {
                 noDataRow.style.display = '';
             }
