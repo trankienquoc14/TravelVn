@@ -5,7 +5,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 class ChatController
 {
     private $db;
-    private $cloudinary; 
+    private $cloudinary;
 
     public function __construct()
     {
@@ -19,9 +19,9 @@ class ChatController
         // 2. Khởi tạo Cloudinary bảo mật bằng biến môi trường $_ENV
         $this->cloudinary = new \Cloudinary\Cloudinary([
             'cloud' => [
-                'cloud_name' => $_ENV['CLOUDINARY_CLOUD_NAME'] ?? '',
-                'api_key' => $_ENV['CLOUDINARY_API_KEY'] ?? '',
-                'api_secret' => $_ENV['CLOUDINARY_API_SECRET'] ?? ''
+                'cloud_name' => 'dp2tvflu0',
+                'api_key' => '829286427571743',
+                'api_secret' => '5wNIiZAzncf_hybOvZqN8ZlYOZ8'
             ],
             'url' => ['secure' => true]
         ]);
