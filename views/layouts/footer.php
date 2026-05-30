@@ -531,7 +531,7 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 style="font-size: 0.75rem; border: 2px solid white; padding: 4px 6px;">0</span>
         </button>
     </div>
-
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         const chatPanel = document.getElementById('chatPanel');
         const chatBody = document.getElementById('chatBody');
