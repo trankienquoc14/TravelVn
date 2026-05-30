@@ -142,6 +142,22 @@ include 'layouts/header.php';
         position: sticky; top: 20px;
     }
     .price-amount { font-size: 1.8rem; font-weight: 800; color: var(--tvlk-orange); margin-bottom: 15px; }
+    .price-old-detail {
+    font-size: 0.95rem;
+    color: var(--tvlk-gray);
+    text-decoration: line-through;
+    font-weight: 600;
+}
+
+.discount-badge-detail {
+    background: #e11d48;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    margin-left: 8px;
+}
     .price-amount span { font-size: 1rem; color: var(--tvlk-gray); font-weight: 600; }
     
     .btn-book-now {
@@ -337,12 +353,36 @@ include 'layouts/header.php';
 
         </div>
 
-        <div class="col-lg-4">
-            <div class="booking-card" id="bookingSection">
+       <?php
+    $originalPrice = (float)($detail['price'] ?? 0);
+    $discountPercent = (float)($detail['discount_percent'] ?? 0);
+    $hasDiscount = $discountPercent > 0;
+
+    $finalPrice = $hasDiscount
+        ? $originalPrice - ($originalPrice * $discountPercent / 100)
+        : $originalPrice;
+?>
+
+<div class="col-lg-4">
+    <div class="booking-card" id="bookingSection">
                 <span class="d-block text-muted fw-bold mb-2">Giá trọn gói chỉ từ</span>
-                <div class="price-amount">
-                    <?= number_format($detail['price']); ?> <span>VNĐ/khách</span>
-                </div>
+
+<?php if ($hasDiscount): ?>
+    <div class="mb-1">
+        <span class="price-old-detail">
+            <?= number_format($originalPrice); ?> VNĐ
+        </span>
+        <span class="discount-badge-detail">-<?= (int)$discountPercent ?>%</span>
+    </div>
+
+    <div class="price-amount">
+        <?= number_format($finalPrice); ?> <span>VNĐ/khách</span>
+    </div>
+<?php else: ?>
+    <div class="price-amount">
+        <?= number_format($originalPrice); ?> <span>VNĐ/khách</span>
+    </div>
+<?php endif; ?>
 
                 <form action="index.php" method="GET">
                     <input type="hidden" name="action" value="booking">

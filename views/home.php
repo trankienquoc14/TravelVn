@@ -765,17 +765,22 @@
         <h5 class="tour-title"><?= htmlspecialchars($tour['tour_name']) ?></h5>
 
         <div class="price-box">
-            <?php if (isset($tour['discount_percent']) && $tour['discount_percent'] > 0): ?>
-                <?php 
-                    // Tính toán giá cũ và giá mới dựa trên % giảm giá trong CSDL
-                    $oldPrice = $tour['price']; 
-                    $currentPrice = $oldPrice - ($oldPrice * ($tour['discount_percent'] / 100));
-                ?>
-                <div class="price-old"><?= number_format($oldPrice) ?> VND</div>
-                <div class="price-current"><?= number_format($currentPrice) ?> VND</div>
-            <?php else: ?>
-                <div class="price-current"><?= number_format($tour['price']) ?> VND</div>
-            <?php endif; ?>
+            <?php
+    $originalPrice = (float)($tour['price'] ?? 0);
+    $discountPercent = (float)($tour['discount_percent'] ?? 0);
+    $hasDiscount = $discountPercent > 0;
+
+    $finalPrice = $hasDiscount
+        ? $originalPrice - ($originalPrice * $discountPercent / 100)
+        : $originalPrice;
+?>
+
+<?php if ($hasDiscount): ?>
+    <div class="price-old"><?= number_format($originalPrice) ?> VNĐ</div>
+    <div class="price-current"><?= number_format($finalPrice) ?> VNĐ</div>
+<?php else: ?>
+    <div class="price-current"><?= number_format($originalPrice) ?> VNĐ</div>
+<?php endif; ?>
         </div>
     </div>
 </div>

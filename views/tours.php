@@ -317,7 +317,26 @@
         font-weight: 800;
         color: var(--tvlk-orange);
     }
+.price-old {
+    font-size: 0.85rem;
+    color: var(--tvlk-gray);
+    text-decoration: line-through;
+    margin-bottom: 2px;
+}
 
+.discount-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #e11d48;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 800;
+    font-size: 0.8rem;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(225, 29, 72, 0.4);
+}
     .btn-actions {
         display: flex;
         gap: 10px;
@@ -451,12 +470,25 @@
             <div class="row g-4" id="tour-list-container">
                 <?php if (!empty($tours)): ?>
                     <?php foreach ($tours as $row): ?>
+    <?php
+        $originalPrice = (float)($row['price'] ?? 0);
+        $discountPercent = (float)($row['discount_percent'] ?? 0);
+        $hasDiscount = $discountPercent > 0;
 
-                        <div class="col-md-6 col-lg-4 tour-card-wrapper" data-price="<?= $row['price'] ?>"
-                            data-duration="<?= $row['duration'] ?? 0 ?>">
+        $finalPrice = $hasDiscount
+            ? $originalPrice - ($originalPrice * $discountPercent / 100)
+            : $originalPrice;
+    ?>
 
+    <div class="col-md-6 col-lg-4 tour-card-wrapper" 
+        data-price="<?= $finalPrice ?>"
+        data-duration="<?= $row['duration'] ?? 0 ?>">
                             <div class="tvlk-card">
-                                <div class="card-img-box">
+    <?php if ($hasDiscount): ?>
+        <div class="discount-badge">-<?= (int)$discountPercent ?>%</div>
+    <?php endif; ?>
+
+    <div class="card-img-box">
                                     <img src="<?= !empty($row['image']) ? (strpos($row['image'], 'http') === 0 ? $row['image'] : '/uploads/' . $row['image']) : 'https://images.unsplash.com/photo-1506929562872-bb421503ef21' ?>"
                                         alt="<?= htmlspecialchars($row['tour_name']) ?>">
                                     <div class="rating-badge">
@@ -484,11 +516,22 @@
                                     </ul>
 
                                     <div class="price-box">
-                                        <div class="price-current">
-                                            <?= number_format($row['price']); ?> <span
-                                                style="font-size: 0.85rem; font-weight: 600; color: var(--tvlk-gray);">VNĐ</span>
-                                        </div>
-                                    </div>
+    <?php if ($hasDiscount): ?>
+        <div class="price-old">
+            <?= number_format($originalPrice); ?> VNĐ
+        </div>
+
+        <div class="price-current">
+            <?= number_format($finalPrice); ?>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--tvlk-gray);">VNĐ</span>
+        </div>
+    <?php else: ?>
+        <div class="price-current">
+            <?= number_format($originalPrice); ?>
+            <span style="font-size: 0.85rem; font-weight: 600; color: var(--tvlk-gray);">VNĐ</span>
+        </div>
+    <?php endif; ?>
+</div>
 
                                     <div class="btn-actions">
                                         <a href="index.php?action=detail&slug=<?= $row['slug']; ?>" class="btn-view">Chi
