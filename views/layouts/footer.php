@@ -552,7 +552,7 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         }
     });
 
-    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (NÂNG CẤP MỚI) 🔥
+    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ SỬA: PHÂN LOẠI CÓ TIẾNG / IM LẶNG) 🔥
     socket.on("system_notification", function (data) {
         let isForMe = false;
 
@@ -563,7 +563,7 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         if (data.target_user_id && data.target_user_id === '<?= $_SESSION['user']['user_id'] ?? '' ?>') isForMe = true;
 
         if (isForMe) {
-            // Tăng số lượng chuông trên Header (Tìm thẻ span có id global-notif-badge)
+            // KHÔNG ĐỔI: Luôn luôn tăng số lượng hiển thị trên chuông Header
             let badge = document.getElementById('global-notif-badge');
             if (badge) {
                 let currentCount = parseInt(badge.innerText) || 0;
@@ -571,28 +571,30 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 badge.classList.remove('d-none');
             }
 
-            // Giao diện màu sắc
-            let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)"; // Info mặc định
-            let icon = "📣";
-            if (data.type === 'success') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; icon = "✅"; }
-            if (data.type === 'warning') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; icon = "⚠️"; }
-            if (data.type === 'error') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; icon = "❌"; }
+            // SỬA ĐỔI: Chỉ nổ Popup Toastify và âm thanh khi KHÔNG bật chế độ im lặng (is_silent)
+            if (!data.is_silent) {
+                let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)"; // Info mặc định
+                let icon = "📣";
+                if (data.type === 'success') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; icon = "✅"; }
+                if (data.type === 'warning') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; icon = "⚠️"; }
+                if (data.type === 'error') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; icon = "❌"; }
 
-            // Bật Popup Toastify
-            Toastify({
-                text: `${icon} <b>${data.title}</b><br><small>${data.message}</small>`,
-                duration: 6000,
-                close: true,
-                gravity: "bottom",
-                position: "right",
-                style: { background: bgColor, borderRadius: "12px", color: "#fff", padding: "14px 20px" },
-                escapeMarkup: false
-            }).showToast();
+                // Bật Popup Toastify ở góc màn hình
+                Toastify({
+                    text: `${icon} <b>${data.title}</b><br><small>${data.message}</small>`,
+                    duration: 6000,
+                    close: true,
+                    gravity: "bottom",
+                    position: "right",
+                    style: { background: bgColor, borderRadius: "12px", color: "#fff", padding: "14px 20px" },
+                    escapeMarkup: false
+                }).showToast();
 
-            // Kèm hiệu ứng âm thanh nhỏ
-            let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.volume = 0.5;
-            audio.play().catch(e => { });
+                // Phát âm thanh Ting kêu bíp bíp
+                let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.volume = 0.5;
+                audio.play().catch(e => { });
+            }
         }
     });
 
@@ -653,6 +655,19 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         div.innerHTML = `<span></span><span></span><span></span>`;
         chatBody.appendChild(div);
         scrollBottom();
+    }
+
+    // 🔥 SỬA ĐỔI: Thêm `is_silent: true` cho mọi kịch bản chat (Text, File, Vị trí, Audio)
+    function triggerChatNotification() {
+        if (typeof window.globalSocket !== 'undefined') {
+            window.globalSocket.emit("send_notification", {
+                target_role: 'admin_group',
+                type: 'info',
+                title: '💬 Tin nhắn mới',
+                message: 'Khách hàng vừa gửi tin nhắn hỗ trợ.',
+                is_silent: true // 🔕 CHỈ HIỂN THỊ CHUÔNG, KHÔNG KÊU, KHÔNG TOAST POPUP
+            });
+        }
     }
 
     function loadChatHistory() {
@@ -727,6 +742,9 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                                 socket.emit("join_room", mySessionId);
                             }
                             if (data.message_data) socket.emit("send_message", data.message_data);
+
+                            // 🔥 THÊM ĐOẠN NÀY: Gọi thông báo im lặng khi up file
+                            triggerChatNotification();
                         } else { alert("Tải lên thất bại: " + (data.error || 'Server không thể lưu file')); }
                     })
                     .catch(err => {
@@ -753,6 +771,10 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                         if (data && data.user_message) {
                             socket.emit("send_message", data.user_message);
                         }
+
+                        // 🔥 THÊM ĐOẠN NÀY: Gọi thông báo im lặng khi chat text
+                        triggerChatNotification();
+
                         if (data && data.is_first && data.bot_message) {
                             appendMessage('admin', data.bot_message.message, 'text');
                             socket.emit("send_message", data.bot_message);
@@ -784,7 +806,12 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                             mySessionId = data.message_data.session_id;
                             socket.emit("join_room", mySessionId);
                         }
-                        if (data.status === 'success') socket.emit("send_message", data.message_data);
+                        if (data.status === 'success') {
+                            socket.emit("send_message", data.message_data);
+
+                            // 🔥 THÊM ĐOẠN NÀY: Gọi thông báo im lặng khi gửi vị trí
+                            triggerChatNotification();
+                        }
                     });
             });
         }
@@ -823,7 +850,12 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                                     mySessionId = data.message_data.session_id;
                                     socket.emit("join_room", mySessionId);
                                 }
-                                if (data.message_data) socket.emit("send_message", data.message_data);
+                                if (data.message_data) {
+                                    socket.emit("send_message", data.message_data);
+
+                                    // 🔥 THÊM ĐOẠN NÀY: Gọi thông báo im lặng khi gửi voice
+                                    triggerChatNotification();
+                                }
                             } else { alert("Ghi âm thất bại: " + (data.error || 'Server không thể lưu file')); }
                         })
                         .catch(err => {
