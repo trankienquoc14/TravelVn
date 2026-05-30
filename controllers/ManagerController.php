@@ -181,6 +181,7 @@ $stmt->execute([
     }
 
     public function createPartner() { require __DIR__ . '/../views/manager/create_partner.php'; }
+    
 
     public function storePartner()
     {
@@ -238,46 +239,152 @@ $stmt->execute([
         require __DIR__ . '/../views/manager/create_departure.php';
     }
 
+    private function getGuideScheduleConflicts($guideIds, $startDate, $endDate, $excludeDepartureId = null)
+{
+    if (empty($guideIds)) {
+        return [];
+    }
+
+    $placeholders = implode(',', array_fill(0, count($guideIds), '?'));
+
+    $sql = "
+        SELECT u.full_name, d.departure_id, d.start_date, d.end_date, t.tour_name
+        FROM departure_guides dg JOIN departures d ON dg.departure_id = d.departure_id
+        JOIN tours t ON d.tour_id = t.tour_id JOIN users u ON dg.guide_id = u.user_id
+        WHERE dg.guide_id IN ($placeholders) AND d.status != 'cancelled'
+        AND d.start_date <= ?
+        AND d.end_date >= ?
+    ";
+
+    $params = array_merge($guideIds, [$endDate, $startDate]);
+
+    if (!empty($excludeDepartureId)) {
+        $sql .= " AND d.departure_id != ?";
+        $params[] = $excludeDepartureId;
+    }
+
+    $stmt = $this->db->prepare($sql);
+    $stmt->execute($params);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
     public function storeDeparture()
-    {
-        if ($_POST['end_date'] < $_POST['start_date']) {
-            $_SESSION['error'] = "Ngày kết thúc không được nhỏ hơn ngày khởi hành!";
-            header("Location: manager.php?action=departures");
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header("Location: manager.php?action=departures");
+        exit;
+    }
+
+    $tour_id = $_POST['tour_id'] ?? null;
+    $start_date = $_POST['start_date'] ?? null;
+    $end_date = $_POST['end_date'] ?? null;
+    $max_seats = isset($_POST['max_seats']) ? (int)$_POST['max_seats'] : 0;
+    $selectedGuides = $_POST['guides'] ?? [];
+
+    // Kiểm tra dữ liệu cơ bản
+    if (empty($tour_id) || empty($start_date) || empty($end_date) || $max_seats <= 0) {
+        $_SESSION['error'] = "Vui lòng nhập đầy đủ thông tin lịch khởi hành!";
+        header("Location: manager.php?action=createDeparture");
+        exit;
+    }
+
+    if ($end_date < $start_date) {
+        $_SESSION['error'] = "Ngày kết thúc không được nhỏ hơn ngày khởi hành!";
+        header("Location: manager.php?action=createDeparture");
+        exit;
+    }
+
+    // Kiểm tra HDV có bị trùng lịch không
+    if (!empty($selectedGuides)) {
+        $placeholders = implode(',', array_fill(0, count($selectedGuides), '?'));
+
+        $sql = "
+            SELECT 
+                u.full_name,
+                t.tour_name,
+                d.start_date,
+                d.end_date
+            FROM departure_guides dg
+            JOIN departures d ON dg.departure_id = d.departure_id
+            JOIN tours t ON d.tour_id = t.tour_id
+            JOIN users u ON dg.guide_id = u.user_id
+            WHERE dg.guide_id IN ($placeholders)
+            AND d.status != 'cancelled'
+            AND d.start_date <= ?
+            AND d.end_date >= ?
+        ";
+
+        $params = array_merge($selectedGuides, [$end_date, $start_date]);
+
+        $stmtCheck = $this->db->prepare($sql);
+        $stmtCheck->execute($params);
+        $conflicts = $stmtCheck->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($conflicts)) {
+            $messages = [];
+
+            foreach ($conflicts as $c) {
+                $messages[] = htmlspecialchars($c['full_name'])
+                    . " đang phụ trách tour \"" . htmlspecialchars($c['tour_name']) . "\" từ "
+                    . date('d/m/Y', strtotime($c['start_date']))
+                    . " đến "
+                    . date('d/m/Y', strtotime($c['end_date']));
+            }
+
+            $_SESSION['error'] = "Không thể phân công HDV vì bị trùng lịch:<br>" . implode('<br>', $messages);
+            header("Location: manager.php?action=createDeparture");
             exit;
         }
+    }
 
-        // Luồng ghế ngồi chuẩn: Lúc mới tạo, available_seats (ghế trống) = max_seats (tối đa), booked_seats = 0
+    try {
+        $this->db->beginTransaction();
+
+        // Thêm lịch khởi hành
         $stmt = $this->db->prepare("
-            INSERT INTO departures (tour_id, start_date, end_date, max_seats, available_seats, booked_seats, status) 
+            INSERT INTO departures 
+            (tour_id, start_date, end_date, max_seats, available_seats, booked_seats, status) 
             VALUES (?, ?, ?, ?, ?, 0, 'upcoming')
         ");
+
         $stmt->execute([
-            $_POST['tour_id'], 
-            $_POST['start_date'], 
-            $_POST['end_date'], 
-            $_POST['max_seats'], 
-            $_POST['max_seats'] // Gán số ghế trống bằng số chỗ tối đa
+            $tour_id,
+            $start_date,
+            $end_date,
+            $max_seats,
+            $max_seats
         ]);
-        
+
         $departure_id = $this->db->lastInsertId();
 
-        // Lưu thông tin Hướng dẫn viên & Bắn thông báo Realtime
-        if (!empty($_POST['guides'])) {
-            $stmtGuide = $this->db->prepare("INSERT INTO departure_guides (departure_id, guide_id) VALUES (?, ?)");
-            
+        // Lưu HDV và gửi thông báo realtime
+        if (!empty($selectedGuides)) {
+            $stmtGuide = $this->db->prepare("
+                INSERT INTO departure_guides (departure_id, guide_id) 
+                VALUES (?, ?)
+            ");
+
             // Khởi tạo Pusher
             try {
                 require_once __DIR__ . '/../vendor/autoload.php';
                 $options = ['cluster' => 'ap1', 'useTLS' => true];
-                $pusher = new Pusher\Pusher('e5405b1b2139fed6f8bc', '2f482d4b39a5f0acd508', '2149497', $options);
-            } catch (Exception $e) { $pusher = null; }
+                $pusher = new Pusher\Pusher(
+                    'e5405b1b2139fed6f8bc',
+                    '2f482d4b39a5f0acd508',
+                    '2149497',
+                    $options
+                );
+            } catch (Exception $e) {
+                $pusher = null;
+            }
 
-            foreach ($_POST['guides'] as $guide_id) {
+            foreach ($selectedGuides as $guide_id) {
                 $stmtGuide->execute([$departure_id, $guide_id]);
-                
-                // Gửi thông báo đến riêng từng kênh của Hướng dẫn viên được chọn
+
                 if ($pusher) {
-                    $dateStr = date('d/m/Y', strtotime($_POST['start_date']));
+                    $dateStr = date('d/m/Y', strtotime($start_date));
+
                     $pusher->trigger('guide-channel-' . $guide_id, 'new-assignment', [
                         'message' => "🔔 Bạn vừa được phân công dẫn tour khởi hành vào ngày {$dateStr}!"
                     ]);
@@ -285,10 +392,22 @@ $stmt->execute([
             }
         }
 
+        $this->db->commit();
+
         $_SESSION['success'] = "Đã lên lịch khởi hành mới thành công!";
         header("Location: manager.php?action=departures");
         exit;
+
+    } catch (Exception $e) {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+
+        $_SESSION['error'] = "Đã xảy ra lỗi khi thêm lịch khởi hành: " . $e->getMessage();
+        header("Location: manager.php?action=createDeparture");
+        exit;
     }
+}
 
     public function editDeparture()
     {
@@ -312,11 +431,29 @@ $stmt->execute([
     {
         $id = $_POST['departure_id'];
         
-        if ($_POST['end_date'] < $_POST['start_date']) {
-            $_SESSION['error'] = "Ngày kết thúc không được nhỏ hơn ngày khởi hành!";
-            header("Location: manager.php?action=editDeparture&id=" . $id);
-            exit;
-        }
+        $selectedGuides = $_POST['guides'] ?? [];
+
+$conflicts = $this->getGuideScheduleConflicts(
+    $selectedGuides,
+    $_POST['start_date'],
+    $_POST['end_date'],
+    $id
+);
+
+if (!empty($conflicts)) {
+    $messages = [];
+
+    foreach ($conflicts as $c) {
+        $messages[] = "{$c['full_name']} đang phụ trách tour \"{$c['tour_name']}\" từ "
+            . date('d/m/Y', strtotime($c['start_date']))
+            . " đến "
+            . date('d/m/Y', strtotime($c['end_date']));
+    }
+
+    $_SESSION['error'] = "Không thể cập nhật vì HDV bị trùng lịch:<br>" . implode('<br>', $messages);
+    header("Location: manager.php?action=editDeparture&id=" . $id);
+    exit;
+}
 
         // 1. LẤY SỐ LIỆU CŨ ĐỂ TÍNH TOÁN LOGIC GHẾ NGỒI
         $stmtOld = $this->db->prepare("SELECT max_seats, available_seats, booked_seats FROM departures WHERE departure_id=?");

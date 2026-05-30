@@ -1,5 +1,5 @@
 <?php include __DIR__ . '/../layouts/header.php'; ?>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
     :root {
         --admin-primary: #0194f3;
@@ -188,5 +188,14 @@
         startDateInput.addEventListener('change', autoCalculateEndDate);
     });
 </script>
-
+<?php if (!empty($_SESSION['error'])): ?>
+<script>
+    Swal.fire({
+        icon: 'error',
+        title: 'Không thể phân công HDV',
+        html: `<?= $_SESSION['error'] ?>`,
+        confirmButtonColor: '#0194f3'
+    });
+</script>
+<?php unset($_SESSION['error']); endif; ?>
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
