@@ -813,7 +813,13 @@
                     <div class="tour-item">
                         <a href="index.php?action=detail&slug=<?= $hotTour['slug'] ?>" class="text-decoration-none">
                             <div class="tvlk-card">
-                                <div class="hot-badge">BÁN CHẠY</div>
+    <div class="hot-badge">BÁN CHẠY</div>
+
+    <?php if (!empty($hotTour['discount_percent']) && $hotTour['discount_percent'] > 0): ?>
+        <div class="discount-badge" style="left: 10px; right: auto;">
+            -<?= (int)$hotTour['discount_percent'] ?>%
+        </div>
+    <?php endif; ?>
 
                                 <div class="card-img-box">
                                     <img src="<?= !empty($hotTour['image']) ? '/uploads/' . $hotTour['image'] : 'https://images.unsplash.com/photo-1506929562872-bb421503ef21' ?>"
@@ -827,9 +833,24 @@
                                     </div>
                                     <h5 class="tour-title"><?= htmlspecialchars($hotTour['tour_name']) ?></h5>
 
-                                    <div class="price-box">
-                                        <div class="price-current"><?= number_format($hotTour['price']) ?> VND</div>
-                                    </div>
+                                    <?php
+    $originalPrice = (float)($hotTour['price'] ?? 0);
+    $discountPercent = (float)($hotTour['discount_percent'] ?? 0);
+    $hasDiscount = $discountPercent > 0;
+
+    $finalPrice = $hasDiscount
+        ? $originalPrice - ($originalPrice * $discountPercent / 100)
+        : $originalPrice;
+?>
+
+<div class="price-box">
+    <?php if ($hasDiscount): ?>
+        <div class="price-old"><?= number_format($originalPrice) ?> VNĐ</div>
+        <div class="price-current"><?= number_format($finalPrice) ?> VNĐ</div>
+    <?php else: ?>
+        <div class="price-current"><?= number_format($originalPrice) ?> VNĐ</div>
+    <?php endif; ?>
+</div>
                                 </div>
                             </div>
                         </a>

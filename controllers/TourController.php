@@ -32,17 +32,29 @@ class TourController
         $stmt = $this->db->query($queryDiscount);
 
         $queryBestSeller = "
-            SELECT t.*, 
-                   (SELECT IFNULL(AVG(rating), 0) FROM reviews WHERE tour_id = t.tour_id) AS avg_rating, 
-                   (SELECT COUNT(review_id) FROM reviews WHERE tour_id = t.tour_id) AS review_count,
-                   (SELECT IFNULL(SUM(booked_seats), 0) FROM departures WHERE tour_id = t.tour_id) AS total_booked
-            FROM tours t
-            WHERE t.status = 'active'
-            ORDER BY total_booked DESC, t.tour_id DESC
-            LIMIT 8
-        ";
-        $stmtBest = $this->db->query($queryBestSeller);
-        $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
+    SELECT 
+        t.*,
+        IFNULL(AVG(r.rating), 0) AS avg_rating,
+        COUNT(DISTINCT r.review_id) AS review_count,
+        IFNULL(SUM(
+            CASE 
+                WHEN b.status IN ('confirmed', 'completed', 'checked_in') 
+                THEN b.number_of_people 
+                ELSE 0 
+            END
+        ), 0) AS total_booked
+    FROM tours t
+    LEFT JOIN departures d ON t.tour_id = d.tour_id
+    LEFT JOIN bookings b ON d.departure_id = b.departure_id
+    LEFT JOIN reviews r ON t.tour_id = r.tour_id
+    WHERE t.status = 'active'
+    GROUP BY t.tour_id
+    ORDER BY total_booked DESC, t.tour_id DESC
+    LIMIT 8
+";
+
+$stmtBest = $this->db->query($queryBestSeller);
+$bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
 
         $stmtBlogs = $this->db->query("SELECT * FROM blogs ORDER BY created_at DESC LIMIT 4");
         $blogs = $stmtBlogs->fetchAll(PDO::FETCH_ASSOC);
