@@ -1,7 +1,21 @@
 <?php
+// Bật báo lỗi để nếu có trục trặc nó sẽ in ra màn hình
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 🔥 1. NHÚNG CÁC CONTROLLER CẦN THIẾT
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../controllers/ManagerController.php';
+require_once __DIR__ . '/../controllers/ChatController.php'; // <-- Dòng bạn bị thiếu
 require_once '../config/helpers.php';
+
+// 🔥 2. KHỞI TẠO BIẾN
 $controller = new ManagerController();
+$chatController = new ChatController(); // <-- Dòng bạn bị thiếu
 
 $action = $_GET['action'] ?? 'dashboard';
 
@@ -94,7 +108,6 @@ switch ($action) {
         $controller->confirmBooking();
         break;
 
-    // 🔥 ĐÂY CHÍNH LÀ ĐOẠN BẠN CẦN THÊM VÀO 🔥
     case 'confirmCash':
         $controller->confirmCash();
         break;
@@ -127,9 +140,11 @@ switch ($action) {
     case 'deleteBlog':
         $controller->deleteBlog();
         break;
+
+    // =======================================================
+    // CÁC CASE DÀNH CHO GIAO DIỆN CHAT MANAGER
+    // =======================================================
     case 'chat':
-        // Gọi hàm chat() trong ManagerController để hiện giao diện Messenger
-        // Bạn cần thêm hàm chat() vào ManagerController tương tự AdminController
         $controller->chat();
         break;
 
@@ -144,11 +159,31 @@ switch ($action) {
     case 'sendMessage':
         $chatController->sendMessage();
         break;
+
     case 'deleteSession':
         $chatController->deleteSession();
         break;
-    
+
+    case 'markAsRead':
+        $chatController->markAsRead();
+        break;
+
+    case 'getTotalUnread':
+        $chatController->getTotalUnread();
+        break;
+
+    case 'uploadFile':
+        $chatController->uploadFile();
+        break;
+
+    case 'uploadVoice':
+        $chatController->uploadVoice();
+        break;
+
+    case 'sendLocation':
+        $chatController->sendLocation();
+        break;
+
     default:
-        // Thay vì chỉ in 404, bạn có thể in ra action bị lỗi để dễ fix bug hơn
         echo "<h2 style='text-align:center; margin-top:50px;'>Lỗi 404: Không tìm thấy action '{$action}'</h2>";
 }

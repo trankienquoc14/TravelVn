@@ -22,7 +22,7 @@ $activeMenu = $activeMenu ?? 'dashboard';
         border-radius: 20px;
         border: 1px solid var(--admin-border, #e2e8f0);
         padding: 24px 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(189, 92, 92, 0.05);
         height: 100%;
         z-index: 10;
     }
@@ -135,7 +135,8 @@ $activeMenu = $activeMenu ?? 'dashboard';
                 class="admin-menu-item <?= ($activeMenu === 'chat') ? 'active' : '' ?>">
                 <i class="bi bi-chat-left-dots-fill"></i> Tin nhắn hỗ trợ
                 <!-- BỔ SUNG SPAN NÀY DÀNH CHO SỐ LƯỢNG CHƯA ĐỌC -->
-                <span id="sidebar-chat-badge" class="badge bg-danger ms-auto d-none" style="font-size: 0.75rem; border-radius: 50px; padding: 4px 8px;">0</span>
+                <span id="sidebar-chat-badge" class="badge bg-danger ms-auto d-none"
+                    style="font-size: 0.75rem; border-radius: 50px; padding: 4px 8px;">0</span>
             </a>
             <a href="/manager.php?action=report"
                 class="admin-menu-item <?= ($activeMenu === 'report') ? 'active' : '' ?>">
@@ -164,7 +165,7 @@ $activeMenu = $activeMenu ?? 'dashboard';
     Pusher.logToConsole = true;
 
     var pusher = new Pusher('dfb02b6665ceae1b4add', {
-        cluster: 'ap1' 
+        cluster: 'ap1'
     });
 
     // 1. KÊNH THÔNG BÁO ĐẶT TOUR
@@ -182,7 +183,7 @@ $activeMenu = $activeMenu ?? 'dashboard';
     chatChannel.bind('new-message', function (data) {
         // Chỉ hiện thông báo nếu người gửi là khách hàng (customer)
         if (data.sender_type === 'customer') {
-            
+
             // Hiện Toast thông báo có tin nhắn mới (Bạn có thể đổi màu background của toast nếu thích)
             document.getElementById('toastMessage').innerText = "💬 Tin nhắn mới từ " + data.sender_name + ": " + data.message;
             const toast = new bootstrap.Toast(document.getElementById('bookingToast'), { delay: 5000 });
@@ -196,8 +197,8 @@ $activeMenu = $activeMenu ?? 'dashboard';
     // Hàm gọi API lấy tổng số tin nhắn chưa đọc
     function updateSidebarChatBadge() {
         // Tự động nhận diện đang ở admin hay manager
-        let apiUrl = '<?= $baseRouter ?>'; 
-        
+        let apiUrl = '<?= $baseRouter ?>';
+
         fetch(apiUrl + '?action=getTotalUnread')
             .then(res => res.json())
             .then(data => {
@@ -213,7 +214,7 @@ $activeMenu = $activeMenu ?? 'dashboard';
     }
 
     // Tự động gọi hàm này ngay khi load trang (dù đang ở trang Tổng quan hay Booking...)
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         updateSidebarChatBadge();
     });
 
