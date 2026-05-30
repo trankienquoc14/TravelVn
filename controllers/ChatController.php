@@ -5,8 +5,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 class ChatController
 {
     private $db;
-    private $pusher;
-    private $cloudinary; // 🔥 Khai báo thuộc tính để dùng chung Cloudinary
+    private $cloudinary; 
 
     public function __construct()
     {
@@ -15,18 +14,7 @@ class ChatController
             session_start();
         }
 
-        // 1. Khởi tạo Pusher bảo mật bằng biến môi trường getenv()
-        // 1. Khởi tạo Pusher bảo mật bằng biến môi trường $_ENV
-        $options = array(
-            'cluster' => $_ENV['PUSHER_CLUSTER'] ?? 'ap1',
-            'useTLS' => true
-        );
-        $this->pusher = new Pusher\Pusher(
-            $_ENV['PUSHER_KEY'] ?? '',
-            $_ENV['PUSHER_SECRET'] ?? '',
-            $_ENV['PUSHER_APP_ID'] ?? '',
-            $options
-        );
+        // ĐÃ XÓA TOÀN BỘ KHỞI TẠO PUSHER Ở ĐÂY
 
         // 2. Khởi tạo Cloudinary bảo mật bằng biến môi trường $_ENV
         $this->cloudinary = new \Cloudinary\Cloudinary([
@@ -48,7 +36,6 @@ class ChatController
             $message = $_POST['message'] ?? '';
             $senderType = $_SESSION['user']['role'] ?? 'customer';
             $senderName = $_SESSION['user']['full_name'] ?? 'Khách vãng lai';
-
             $departureId = (isset($_POST['departure_id']) && trim($_POST['departure_id']) !== '') ? (int) $_POST['departure_id'] : null;
 
             // XÁC ĐỊNH SESSION CHAT
@@ -88,8 +75,8 @@ class ChatController
                 ");
                 $stmt->execute([$sessionId, $senderType, $senderName, $message, $departureId, $currentTime]);
 
-                // PUSH REALTIME
-                $data = [
+                // Đóng gói dữ liệu tin nhắn người dùng để gửi lại cho Frontend
+                $userData = [
                     'session_id' => $sessionId,
                     'sender_type' => $senderType,
                     'sender_name' => $senderName,
@@ -97,7 +84,8 @@ class ChatController
                     'message' => htmlspecialchars($message),
                     'time' => date('H:i')
                 ];
-                $this->pusher->trigger('live-chat', 'new-message', $data);
+
+                $botData = null; // Khởi tạo biến bot rỗng
 
                 // AUTO REPLY BOT
                 $isFirst = false;
@@ -115,20 +103,24 @@ class ChatController
                         ");
                         $botStmt->execute([$sessionId, $autoReply, $departureId, $currentTime]);
 
-                        $this->pusher->trigger('live-chat', 'new-message', [
+                        // Đóng gói dữ liệu của Bot
+                        $botData = [
                             'session_id' => $sessionId,
                             'sender_type' => 'admin',
                             'sender_name' => 'TravelVN Bot',
                             'message' => $autoReply,
                             'time' => date('H:i')
-                        ]);
+                        ];
                     }
                 }
 
+                // Trả về JSON chứa toàn bộ dữ liệu để giao diện bắt và đẩy lên Socket.io
                 echo json_encode([
                     'status' => 'success',
                     'session_id' => $sessionId,
-                    'is_first' => $isFirst
+                    'is_first' => $isFirst,
+                    'user_message' => $userData,
+                    'bot_message' => $botData
                 ]);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Dữ liệu rỗng']);
@@ -140,9 +132,10 @@ class ChatController
         exit;
     }
 
-    // 2. Lấy danh sách phiên chat
+    // 2. Lấy danh sách phiên chat (Giữ nguyên)
     public function getSessions()
     {
+        // ... (Code cũ của bạn giữ nguyên, không thay đổi)
         header('Content-Type: application/json');
 
         try {
@@ -196,9 +189,10 @@ class ChatController
         exit;
     }
 
-    // Hàm đánh dấu đã đọc
+    // Hàm đánh dấu đã đọc (Giữ nguyên)
     public function markAsRead()
     {
+        // ... (Code cũ giữ nguyên)
         header('Content-Type: application/json');
         $role = $_SESSION['user']['role'] ?? 'customer';
 
@@ -225,9 +219,10 @@ class ChatController
         exit;
     }
 
-    // 3. Lấy lịch sử tin nhắn
+    // 3. Lấy lịch sử tin nhắn (Giữ nguyên)
     public function getHistory()
     {
+        // ... (Code cũ giữ nguyên)
         header('Content-Type: application/json');
         $role = $_SESSION['user']['role'] ?? 'customer';
 
@@ -252,7 +247,7 @@ class ChatController
         exit;
     }
 
-    // Xóa toàn bộ lịch sử của một cuộc trò chuyện
+    // Xóa toàn bộ lịch sử của một cuộc trò chuyện (Giữ nguyên)
     public function deleteSession()
     {
         header('Content-Type: application/json');
@@ -269,7 +264,7 @@ class ChatController
         exit;
     }
 
-    // Đếm tổng tin nhắn chưa đọc để hiển thị lên Sidebar
+    // Đếm tổng tin nhắn chưa đọc (Giữ nguyên)
     public function getTotalUnread()
     {
         header('Content-Type: application/json');
@@ -281,7 +276,7 @@ class ChatController
         exit;
     }
 
-    // Đếm số tin nhắn Admin gửi mà Khách chưa đọc
+    // Đếm số tin nhắn Admin gửi mà Khách chưa đọc (Giữ nguyên)
     public function getCustomerUnreadCount()
     {
         header('Content-Type: application/json');
@@ -333,7 +328,6 @@ class ChatController
             $isImage = in_array($ext, $imageTypes);
             $messageType = $isImage ? 'image' : 'file';
 
-            // 🔥 SỬA: Thay thế việc khai báo lại bằng biến môi trường đã nạp ở __construct()
             $result = $this->cloudinary->uploadApi()->upload(
                 $_FILES['file']['tmp_name'],
                 [
@@ -347,10 +341,12 @@ class ChatController
             $stmt = $this->db->prepare("INSERT INTO chat_messages (session_id, sender_type, sender_name, file_url, message_type, departure_id ) VALUES (?,?,?,?,?,?)");
             $stmt->execute([$sessionId, $senderType, $senderName, $dbUrl, $messageType, $departureId]);
 
-            $this->pusher->trigger(
-                'live-chat',
-                'new-message',
-                [
+            // Trả về JSON kèm dữ liệu message thay vì gọi Pusher
+            echo json_encode([
+                'success' => true,
+                'url' => $dbUrl,
+                'type' => $messageType,
+                'message_data' => [
                     'session_id' => $sessionId,
                     'sender_type' => $senderType,
                     'sender_name' => $senderName,
@@ -359,12 +355,6 @@ class ChatController
                     'departure_id' => $departureId,
                     'time' => date('H:i')
                 ]
-            );
-
-            echo json_encode([
-                'success' => true,
-                'url' => $dbUrl,
-                'type' => $messageType
             ]);
 
         } catch (Exception $e) {
@@ -392,7 +382,6 @@ class ChatController
                 exit;
             }
 
-            // 🔥 SỬA: Thay thế việc khai báo lại bằng biến môi trường đã nạp ở __construct()
             $result = $this->cloudinary->uploadApi()->upload(
                 $_FILES['voice']['tmp_name'],
                 [
@@ -409,10 +398,12 @@ class ChatController
             ");
             $stmt->execute([$sessionId, $senderType, $senderName, $dbUrl, 'audio', $departureId]);
 
-            $this->pusher->trigger(
-                'live-chat',
-                'new-message',
-                [
+            // Trả về JSON kèm dữ liệu message
+            echo json_encode([
+                'success' => true,
+                'url' => $dbUrl,
+                'type' => 'audio',
+                'message_data' => [
                     'session_id' => $sessionId,
                     'sender_type' => $senderType,
                     'sender_name' => $senderName,
@@ -421,12 +412,6 @@ class ChatController
                     'departure_id' => $departureId,
                     'time' => date('H:i')
                 ]
-            );
-
-            echo json_encode([
-                'success' => true,
-                'url' => $dbUrl,
-                'type' => 'audio'
             ]);
 
         } catch (Exception $e) {
@@ -464,18 +449,19 @@ class ChatController
             ");
             $stmt->execute([$sessionId, $senderType, $senderName, $mapLink, $departureId, $currentTime]);
 
-            $data = [
-                'session_id' => $sessionId,
-                'sender_type' => $senderType,
-                'sender_name' => $senderName,
-                'message' => $mapLink,
-                'message_type' => 'location',
-                'departure_id' => $departureId,
-                'time' => date('H:i')
-            ];
-            $this->pusher->trigger('live-chat', 'new-message', $data);
-
-            echo json_encode(['status' => 'success']);
+            // Trả về JSON chứa cục dữ liệu vị trí
+            echo json_encode([
+                'status' => 'success',
+                'message_data' => [
+                    'session_id' => $sessionId,
+                    'sender_type' => $senderType,
+                    'sender_name' => $senderName,
+                    'message' => $mapLink,
+                    'message_type' => 'location',
+                    'departure_id' => $departureId,
+                    'time' => date('H:i')
+                ]
+            ]);
             exit;
         }
         echo json_encode(['error' => 'Invalid location data']);
