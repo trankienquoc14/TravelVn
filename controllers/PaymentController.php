@@ -29,6 +29,68 @@ class PaymentController
 
         return $qr_url;
     }
+    // --- THÊM HÀM NÀY ĐỂ XỬ LÝ HỦY ĐƠN & HOÀN TRẢ GHẾ ---
+    public function cancelBooking()
+    {
+        header('Content-Type: application/json');
+
+        // Nhận ID thanh toán từ JavaScript gửi lên qua POST
+        $payment_id = $_POST['payment_id'] ?? 0;
+
+        if (!$payment_id) {
+            echo json_encode(["status" => "error", "message" => "Thiếu payment_id"]);
+            exit;
+        }
+
+        try {
+            // 1. Lấy thông tin đơn hàng và chuyến đi để biết số lượng ghế cần trả lại
+            $stmt = $this->db->prepare("
+                SELECT p.payment_status, b.booking_id, b.departure_id, b.number_of_people 
+                FROM payments p
+                JOIN bookings b ON p.booking_id = b.booking_id
+                WHERE p.payment_id = ?
+            ");
+            $stmt->execute([$payment_id]);
+            $info = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$info) {
+                echo json_encode(["status" => "error", "message" => "Không tìm thấy giao dịch"]);
+                exit;
+            }
+
+            // 2. Chỉ thực hiện hủy nếu đơn hàng đang ở trạng thái 'pending' (chờ thanh toán)
+            if ($info['payment_status'] === 'pending') {
+
+                $this->db->beginTransaction();
+
+                // Đổi trạng thái payments thành cancelled
+                $stmt1 = $this->db->prepare("UPDATE payments SET payment_status = 'cancelled' WHERE payment_id = ?");
+                $stmt1->execute([$payment_id]);
+
+                // Đổi trạng thái bookings thành cancelled
+                $stmt2 = $this->db->prepare("UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?");
+                $stmt2->execute([$info['booking_id']]);
+
+                // 🔥 QUAN TRỌNG NHẤT: Cộng trả lại số ghế vào bảng departures
+                $stmt3 = $this->db->prepare("
+                    UPDATE departures 
+                    SET available_seats = available_seats + ? 
+                    WHERE departure_id = ?
+                ");
+                $stmt3->execute([$info['number_of_people'], $info['departure_id']]);
+
+                $this->db->commit();
+
+                echo json_encode(["status" => "success", "message" => "Đã hủy đơn và hoàn trả ghế thành công"]);
+            } else {
+                echo json_encode(["status" => "error", "message" => "Đơn hàng đã được xử lý trước đó, không thể hủy."]);
+            }
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            echo json_encode(["status" => "error", "message" => "Lỗi hệ thống: " . $e->getMessage()]);
+        }
+        exit;
+    }
 
     public function payment()
     {
@@ -113,20 +175,20 @@ class PaymentController
 
         // Nếu đã thanh toán rồi thì khỏi kiểm tra API
         if ($payment['payment_status'] == 'paid') {
-    echo json_encode([
-        "status" => "paid",
-        "realtime" => [
-            "event" => "payment_success",
-            "user_id" => $payment['user_id'],
-            "booking_id" => $payment['booking_id'],
-            "payment_id" => $payment_id,
-            "status_text" => "Đã xác nhận",
-            "badge_class" => "badge-confirmed",
-            "message" => "Đơn hàng #" . str_pad($payment['booking_id'], 6, '0', STR_PAD_LEFT) . " đã được thanh toán."
-        ]
-    ]);
-    exit;
-}
+            echo json_encode([
+                "status" => "paid",
+                "realtime" => [
+                    "event" => "payment_success",
+                    "user_id" => $payment['user_id'],
+                    "booking_id" => $payment['booking_id'],
+                    "payment_id" => $payment_id,
+                    "status_text" => "Đã xác nhận",
+                    "badge_class" => "badge-confirmed",
+                    "message" => "Đơn hàng #" . str_pad($payment['booking_id'], 6, '0', STR_PAD_LEFT) . " đã được thanh toán."
+                ]
+            ]);
+            exit;
+        }
 
         // Gọi SePay API
         $url = "https://my.sepay.vn/userapi/transactions/list?account_number="
@@ -229,17 +291,17 @@ class PaymentController
                 $this->db->commit();
 
                 echo json_encode([
-    "status" => "paid",
-    "realtime" => [
-        "event" => "payment_success",
-        "user_id" => $payment['user_id'],
-        "booking_id" => $payment['booking_id'],
-        "payment_id" => $payment_id,
-        "status_text" => "Đã xác nhận",
-        "badge_class" => "badge-confirmed",
-        "message" => "Thanh toán QR thành công. Đơn hàng #" . str_pad($payment['booking_id'], 6, '0', STR_PAD_LEFT) . " đã được xác nhận."
-    ]
-]);
+                    "status" => "paid",
+                    "realtime" => [
+                        "event" => "payment_success",
+                        "user_id" => $payment['user_id'],
+                        "booking_id" => $payment['booking_id'],
+                        "payment_id" => $payment_id,
+                        "status_text" => "Đã xác nhận",
+                        "badge_class" => "badge-confirmed",
+                        "message" => "Thanh toán QR thành công. Đơn hàng #" . str_pad($payment['booking_id'], 6, '0', STR_PAD_LEFT) . " đã được xác nhận."
+                    ]
+                ]);
 
             } catch (Exception $e) {
 

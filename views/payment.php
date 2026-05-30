@@ -325,7 +325,15 @@ $qr_url .= "&accountName=" . urlencode($account_name);
             }
 
             // Gọi API ngầm để PHP thực sự Hủy đơn và Cộng lại ghế vào DB
-            fetch(`index.php?action=cancelBooking&payment_id=${currentPaymentId}`, { method: 'POST' });
+            let formData = new FormData();
+            formData.append('payment_id', currentPaymentId);
+
+            fetch('index.php?action=cancelBooking', {
+                method: 'POST',
+                body: formData
+            }).then(res => {
+                console.log("Đã gửi lệnh hủy đơn và nhả vé lên server!");
+            });
 
             Swal.fire({
                 title: 'Hết thời gian thanh toán',
