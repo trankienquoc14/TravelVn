@@ -667,7 +667,6 @@ class ManagerController
         require __DIR__ . '/../views/manager/bookings.php';
     }
 
-    // ================= 1. DUYỆT ĐƠN HÀNG (Báo cho Khách) =================
     public function confirmBooking()
     {
         $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -675,8 +674,12 @@ class ManagerController
         try {
             $this->db->beginTransaction();
 
-            // SỬA: Lấy thêm cột user_id
-            $stmtBooking = $this->db->prepare("SELECT user_id, departure_id, number_of_people, status, customer_name FROM bookings WHERE booking_id = ? FOR UPDATE");
+            $stmtBooking = $this->db->prepare("
+            SELECT user_id, status, customer_name
+            FROM bookings
+            WHERE booking_id = ?
+            FOR UPDATE
+        ");
             $stmtBooking->execute([$id]);
             $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
 
@@ -686,26 +689,27 @@ class ManagerController
                 exit;
             }
 
-            $stmtDep = $this->db->prepare("SELECT available_seats FROM departures WHERE departure_id = ? FOR UPDATE");
-            $stmtDep->execute([$booking['departure_id']]);
-            $departure = $stmtDep->fetch(PDO::FETCH_ASSOC);
+            // Chỉ xác nhận đơn, KHÔNG trừ ghế nữa
+            $this->db->prepare("
+            UPDATE bookings
+            SET status='confirmed'
+            WHERE booking_id=?
+        ")->execute([$id]);
 
-            if ($departure['available_seats'] < $booking['number_of_people']) {
-                $this->db->rollBack();
-                $_SESSION['error'] = "Lỗi: Chuyến đi này không còn đủ chỗ trống để duyệt!";
-                header("Location: manager.php?action=bookings");
-                exit;
-            }
-
-            $this->db->prepare("UPDATE bookings SET status='confirmed' WHERE booking_id=?")->execute([$id]);
-            $this->db->prepare("UPDATE departures SET booked_seats = booked_seats + ?, available_seats = available_seats - ? WHERE departure_id = ?")
-                ->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
-
-            // 🔥 LƯU DATABASE: GỬI CHUÔNG BÁO CHO KHÁCH HÀNG (ĐƠN ĐÃ DUYỆT)
+            // Thông báo cho khách
             $link_user = "index.php?action=myBookings";
             $message_user = "✅ Đơn đặt tour #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã được hệ thống xác nhận!";
-            $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (?, ?, 'Xác Nhận', ?, ?)")
-                ->execute([$booking['user_id'], $id, $link_user, $message_user]);
+
+            $this->db->prepare("
+            INSERT INTO notifications
+            (user_id, booking_id, type, link, message)
+            VALUES (?, ?, 'Xác Nhận', ?, ?)
+        ")->execute([
+                        $booking['user_id'],
+                        $id,
+                        $link_user,
+                        $message_user
+                    ]);
 
             $this->db->commit();
 
@@ -721,96 +725,6 @@ class ManagerController
         exit;
     }
 
-    // ================= 2. HỦY ĐƠN HÀNG (Báo cho Khách) =================
-    public function cancelBooking()
-    {
-        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-
-        try {
-            $this->db->beginTransaction();
-
-            // SỬA: Lấy thêm cột user_id
-            $stmtBooking = $this->db->prepare("SELECT user_id, departure_id, number_of_people, status, customer_name FROM bookings WHERE booking_id = ? FOR UPDATE");
-            $stmtBooking->execute([$id]);
-            $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
-
-            if ($booking && $booking['status'] !== 'cancelled' && $booking['status'] !== 'refunded') {
-
-                if ($booking['status'] === 'confirmed') {
-                    $stmtRestoreSeats = $this->db->prepare("UPDATE departures SET booked_seats = booked_seats - ?, available_seats = available_seats + ? WHERE departure_id = ?");
-                    $stmtRestoreSeats->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
-                }
-
-                $this->db->prepare("UPDATE bookings SET status='cancelled' WHERE booking_id=?")->execute([$id]);
-
-                // 🔥 LƯU DATABASE: GỬI CHUÔNG BÁO CHO KHÁCH HÀNG (ĐƠN BỊ HỦY)
-                $link_user = "index.php?action=myBookings";
-                $message_user = "⚠️ Đơn đặt tour #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã bị hủy.";
-                $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (?, ?, 'Hủy Đơn', ?, ?)")
-                    ->execute([$booking['user_id'], $id, $link_user, $message_user]);
-
-                $this->db->commit();
-                $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
-                $_SESSION['success'] = "Đã hủy đơn <strong>#{$id}</strong> của khách {$customerName} thành công.";
-            } else {
-                $this->db->rollBack();
-                $_SESSION['error'] = "Đơn hàng đã được xử lý hoặc không tồn tại.";
-            }
-
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            $_SESSION['error'] = "Lỗi hệ thống khi hủy đơn.";
-        }
-
-        header("Location: manager.php?action=bookings");
-        exit;
-    }
-
-    // ================= 3. ĐÁNH DẤU HOÀN TIỀN (Báo cho Khách) =================
-    public function refundBooking()
-    {
-        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-
-        try {
-            $this->db->beginTransaction();
-
-            // SỬA: Lấy thêm cột customer_name
-            $stmtBooking = $this->db->prepare("SELECT user_id, status, departure_id, number_of_people, total_price, customer_name FROM bookings WHERE booking_id = ? FOR UPDATE");
-            $stmtBooking->execute([$id]);
-            $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
-
-            if ($booking && $booking['status'] !== 'refunded') {
-
-                if ($booking['status'] === 'confirmed') {
-                    $this->db->prepare("UPDATE departures SET booked_seats = booked_seats - ?, available_seats = available_seats + ? WHERE departure_id = ?")
-                        ->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
-                }
-
-                $this->db->prepare("UPDATE bookings SET status='refunded' WHERE booking_id=?")->execute([$id]);
-
-                // 🔥 SỬA: Cập nhật lại cấu trúc bảng notifications mới cho chức năng Hoàn Tiền
-                $link_user = "index.php?action=myBookings";
-                $message_user = "💸 TravelVN đã hoàn tiền thành công đơn #" . str_pad($id, 6, '0', STR_PAD_LEFT) . ". Số tiền hoàn: " . number_format($booking['total_price']) . "đ.";
-                $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (?, ?, 'Thanh Toán', ?, ?)")
-                    ->execute([$booking['user_id'], $id, $link_user, $message_user]);
-
-                $this->db->commit();
-
-                $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
-                $_SESSION['success'] = "Đã đánh dấu hoàn tiền thành công đơn #{$id} của khách {$customerName}!";
-            } else {
-                $this->db->rollBack();
-            }
-
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            $_SESSION['error'] = "Lỗi khi cập nhật hoàn tiền: " . $e->getMessage();
-        }
-
-        header("Location: manager.php?action=bookings");
-        exit;
-    }
-
     // ================= 4. XÁC NHẬN TIỀN MẶT (Báo cho Khách) =================
     public function confirmCash()
     {
@@ -819,49 +733,61 @@ class ManagerController
         try {
             $this->db->beginTransaction();
 
-            // SỬA: Lấy thêm cột user_id
-            $stmtBooking = $this->db->prepare("SELECT user_id, departure_id, number_of_people, status, customer_name FROM bookings WHERE booking_id = ? FOR UPDATE");
+            $stmtBooking = $this->db->prepare("
+            SELECT user_id, status, customer_name
+            FROM bookings
+            WHERE booking_id = ?
+            FOR UPDATE
+        ");
             $stmtBooking->execute([$id]);
             $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
 
             if ($booking) {
-                // Update thanh toán
-                $this->db->prepare("UPDATE payments SET payment_status = 'paid' WHERE booking_id = ?")->execute([$id]);
 
-                // Nếu đơn chưa Confirm thì Confirm luôn và trừ ghế
+                // Cập nhật thanh toán
+                $this->db->prepare("
+                UPDATE payments
+                SET payment_status = 'paid'
+                WHERE booking_id = ?
+            ")->execute([$id]);
+
+                // Nếu đơn đang pending thì chỉ confirm
                 if ($booking['status'] === 'pending') {
 
-                    // Check ghế
-                    $stmtDep = $this->db->prepare("SELECT available_seats FROM departures WHERE departure_id = ? FOR UPDATE");
-                    $stmtDep->execute([$booking['departure_id']]);
-                    if ($stmtDep->fetchColumn() < $booking['number_of_people']) {
-                        $this->db->rollBack();
-                        $_SESSION['error'] = "Không đủ ghế để duyệt!";
-                        header("Location: manager.php?action=bookings");
-                        exit;
-                    }
+                    $this->db->prepare("
+                    UPDATE bookings
+                    SET status='confirmed'
+                    WHERE booking_id=?
+                ")->execute([$id]);
 
-                    $this->db->prepare("UPDATE bookings SET status='confirmed' WHERE booking_id=?")->execute([$id]);
-                    $this->db->prepare("UPDATE departures SET booked_seats = booked_seats + ?, available_seats = available_seats - ? WHERE departure_id = ?")
-                        ->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
-
-                    // 🔥 LƯU DATABASE: GỬI CHUÔNG BÁO CHO KHÁCH (ĐÃ NHẬN TIỀN MẶT)
+                    // Thông báo cho khách
                     $link_user = "index.php?action=myBookings";
-                    $message_user = "💰 Đơn hàng #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã được xác nhận thanh toán tiền mặt!";
-                    $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (?, ?, 'Thanh Toán', ?, ?)")
-                        ->execute([$booking['user_id'], $id, $link_user, $message_user]);
+                    $message_user = "💰 Đơn hàng #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã được xác nhận đã thanh toán bằng tiền mặt!";
+
+                    $this->db->prepare("
+                    INSERT INTO notifications
+                    (user_id, booking_id, type, link, message)
+                    VALUES (?, ?, 'Thanh Toán', ?, ?)
+                ")->execute([
+                                $booking['user_id'],
+                                $id,
+                                $link_user,
+                                $message_user
+                            ]);
                 }
 
                 $this->db->commit();
 
                 $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
                 $_SESSION['success'] = "Đã xác nhận thu tiền mặt thành công đơn #{$id} của khách {$customerName}!";
+
             } else {
                 $this->db->rollBack();
             }
 
         } catch (Exception $e) {
             $this->db->rollBack();
+            $_SESSION['error'] = "Lỗi khi xác nhận thanh toán: " . $e->getMessage();
         }
 
         header("Location: manager.php?action=bookings");
