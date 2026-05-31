@@ -2,6 +2,37 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// 🔥 TRUY VẤN DATABASE LẤY THÔNG BÁO CHO CHUÔNG
+$notifications = [];
+$unreadCount = 0;
+
+if (isset($_SESSION['user'])) {
+    require_once __DIR__ . '/../config/database.php';
+    $dbHeader = (new Database())->connect();
+
+    $userRole = $_SESSION['user']['role'];
+    $userId = $_SESSION['user']['user_id'];
+
+    // Nếu là Admin/Manager thì lấy thông báo chung (user_id IS NULL)
+    // Nếu là Customer thì lấy thông báo riêng của họ
+    if ($userRole === 'admin' || $userRole === 'tour_manager') {
+        $stmtNotif = $dbHeader->prepare("SELECT * FROM notifications WHERE user_id IS NULL ORDER BY created_at DESC LIMIT 10");
+        $stmtNotif->execute();
+    } else {
+        $stmtNotif = $dbHeader->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
+        $stmtNotif->execute([$userId]);
+    }
+
+    $notifications = $stmtNotif->fetchAll(PDO::FETCH_ASSOC);
+
+    // Đếm số lượng chưa đọc
+    foreach ($notifications as $n) {
+        if ($n['is_read'] == 0) {
+            $unreadCount++;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -127,6 +158,24 @@ if (session_status() === PHP_SESSION_NONE) {
                 margin-bottom: -15px;
             }
         }
+
+        /* CSS cho danh sách thông báo */
+        .notif-dropdown-menu {
+            width: 350px;
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 0;
+            border-radius: 12px;
+        }
+
+        .notif-item {
+            white-space: normal;
+            transition: background 0.2s;
+        }
+
+        .notif-item:hover {
+            background-color: #f8f9fa;
+        }
     </style>
 </head>
 
@@ -157,17 +206,80 @@ if (session_status() === PHP_SESSION_NONE) {
                         </a>
                     </li>
 
-                    <li class="nav-item position-relative mx-2 d-flex align-items-center">
-                        <a class="nav-link nav-link-custom" href="#" title="Thông báo hệ thống">
+                    <li class="nav-item dropdown position-relative mx-2 d-flex align-items-center">
+                        <a class="nav-link nav-link-custom" href="#" id="notifDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="Thông báo hệ thống">
                             <i class="bi bi-bell-fill fs-5"></i>
                             <span id="global-notif-badge"
-                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none"
+                                class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger <?= $unreadCount > 0 ? '' : 'd-none' ?>"
                                 style="font-size: 0.65rem; border: 2px solid white;">
-                                0
+                                <?= $unreadCount ?>
                             </span>
                         </a>
-                    </li>
 
+                        <ul class="dropdown-menu dropdown-menu-end shadow notif-dropdown-menu"
+                            aria-labelledby="notifDropdown">
+                            <li class="p-3 border-bottom bg-light sticky-top" style="z-index: 10;">
+                                <h6 class="mb-0 fw-bold text-dark"><i class="bi bi-bell"></i> Thông báo hệ thống</h6>
+                            </li>
+
+                            <?php if (empty($notifications)): ?>
+                                <li class="p-4 text-center text-muted">
+                                    <i class="bi bi-bell-slash fs-2 d-block mb-2 text-secondary"></i>
+                                    Bạn chưa có thông báo nào
+                                </li>
+                            <?php else: ?>
+                                <?php foreach ($notifications as $notif): ?>
+                                    <li>
+                                        <a href="<?= htmlspecialchars($notif['link'] ?? '#') ?>"
+                                            class="dropdown-item d-flex align-items-center py-3 border-bottom notif-item <?= $notif['is_read'] == 0 ? 'bg-light' : '' ?>">
+                                            <div class="me-3">
+                                                <?php
+                                                // Xác định icon và màu theo loại thông báo
+                                                $bgClass = 'bg-primary';
+                                                $icon = 'bi-info-circle';
+
+                                                if ($notif['type'] == 'Thanh Toán') {
+                                                    $bgClass = 'bg-success';
+                                                    $icon = 'bi-currency-dollar';
+                                                } elseif ($notif['type'] == 'Hủy Đơn') {
+                                                    $bgClass = 'bg-danger';
+                                                    $icon = 'bi-x-circle';
+                                                } elseif ($notif['type'] == 'Đơn Hàng') {
+                                                    $bgClass = 'bg-warning text-dark';
+                                                    $icon = 'bi-cart-check';
+                                                }
+                                                ?>
+                                                <div class="rounded-circle <?= $bgClass ?> text-white d-flex align-items-center justify-content-center shadow-sm"
+                                                    style="width: 42px; height: 42px;">
+                                                    <i class="bi <?= $icon ?> fs-5"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <div class="small text-uppercase fw-bold mb-1"
+                                                    style="color: #64748b; font-size: 0.75rem;">
+                                                    <?= htmlspecialchars($notif['type'] ?? 'Hệ thống') ?>
+                                                </div>
+                                                <div class="text-dark <?= $notif['is_read'] == 0 ? 'fw-bold' : '' ?>"
+                                                    style="font-size: 0.9rem; line-height: 1.4;">
+                                                    <?= htmlspecialchars($notif['message']) ?>
+                                                </div>
+                                                <div class="small text-muted mt-1" style="font-size: 0.8rem;">
+                                                    <i
+                                                        class="bi bi-clock me-1"></i><?= date('d/m/Y H:i', strtotime($notif['created_at'])) ?>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+
+                            <?php if (!empty($notifications)): ?>
+                                <li><a class="dropdown-item text-center py-2 text-primary fw-bold" href="#"
+                                        style="font-size: 0.9rem;">Xem tất cả</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
                     <li class="nav-item me-3">
                         <?php
                         $role = $_SESSION['user']['role'] ?? 'customer';
