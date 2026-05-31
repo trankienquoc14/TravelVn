@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/helpers.php'; // Đảm bảo gọi file chứa decode_id()
 
 class PaymentController
 {
@@ -13,10 +14,10 @@ class PaymentController
         $this->db = (new Database())->connect();
     }
 
-    // Hàm tạo mã QR (Đã chỉnh sang Sacombank để SePay dễ quét)
+    // Hàm tạo mã QR 
     public function createQR($amount, $info)
     {
-        $bank = "Sacombank"; // Đổi thành Sacombank cho khớp với tài khoản bạn đã kết nối
+        $bank = "Sacombank";
         $account = $this->accountNumber;
         $name = "CONG TY DU LICH TRAVELVN";
 
@@ -30,64 +31,13 @@ class PaymentController
         return $qr_url;
     }
 
-
-    public function payment()
-    {
-        // --- SỬA TẠI ĐÂY: Dùng hàm decode_id() để giải mã chuỗi từ URL thay vì ép kiểu (int) ---
-        $hash_payment = $_GET['payment_id'] ?? '';
-        $hash_booking = $_GET['booking_id'] ?? '';
-
-        $payment_id = decode_id($hash_payment);
-        $booking_id = decode_id($hash_booking);
-        // -------------------------------------------------------------------------------------
-
-        if ($payment_id <= 0 && $booking_id > 0) {
-            $stmtFind = $this->db->prepare("SELECT payment_id FROM payments WHERE booking_id = ? LIMIT 1");
-            $stmtFind->execute([$booking_id]);
-            $row = $stmtFind->fetch(PDO::FETCH_ASSOC);
-            if ($row) {
-                $payment_id = $row['payment_id'];
-            }
-        }
-
-        if ($payment_id <= 0) {
-            die("<div class='text-center mt-5'><h3>Thiếu thông tin thanh toán hoặc đường dẫn không hợp lệ!</h3></div>");
-        }
-
-        $stmt = $this->db->prepare("
-            SELECT p.*, b.customer_name, t.tour_name
-            FROM payments p
-            JOIN bookings b ON p.booking_id = b.booking_id
-            JOIN departures d ON b.departure_id = d.departure_id
-            JOIN tours t ON d.tour_id = t.tour_id
-            WHERE p.payment_id = ?
-        ");
-        $stmt->execute([$payment_id]);
-        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$payment) {
-            die("<div class='text-center mt-5'><h3>Không tìm thấy giao dịch</h3></div>");
-        }
-
-        $amount = (int) $payment['amount'];
-        $info = "THANHTOAN " . $payment_id;
-
-        // Bạn có thể giữ hàm tạo QR mặc định của bạn ở đây
-        // $qr_url = $this->createQR($amount, $info);
-
-        require __DIR__ . '/../views/payment.php';
-    }
-
-    // --- ĐÂY LÀ HÀM QUAN TRỌNG NHẤT: THAY THẾ WEBHOOK ---
-    // --- 1. HÀM XỬ LÝ HỦY ĐƠN & HOÀN TRẢ GHẾ ---
+    // --- HÀM XỬ LÝ HỦY ĐƠN & HOÀN TRẢ GHẾ ---
     public function cancelBooking()
     {
         header('Content-Type: application/json');
 
-        // 🔥 Lấy mã Hash từ JS gửi lên (Bảo mật)
+        // Nhận ID từ JS (có thể là mã băm hoặc số)
         $hash_id = $_POST['payment_id'] ?? '';
-
-        // Giải mã thông minh: Nếu là số thì lấy số, nếu là chữ thì giải mã
         $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
 
         if ($payment_id <= 0) {
@@ -110,26 +60,23 @@ class PaymentController
                 exit;
             }
 
+            // Đơn pending chưa trừ ghế nên khi hủy KHÔNG ĐƯỢC cộng ghế
             if ($info['payment_status'] === 'pending') {
                 $this->db->beginTransaction();
 
-                $stmt1 = $this->db->prepare("UPDATE payments SET payment_status = 'cancelled' WHERE payment_id = ?");
-                $stmt1->execute([$payment_id]);
+                $this->db->prepare("UPDATE payments SET payment_status = 'cancelled' WHERE payment_id = ?")->execute([$payment_id]);
+                $this->db->prepare("UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?")->execute([$info['booking_id']]);
 
-                $stmt2 = $this->db->prepare("UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?");
-                $stmt2->execute([$info['booking_id']]);
-
-                $stmt3 = $this->db->prepare("
-                    UPDATE departures 
-                    SET available_seats = available_seats + ? 
-                    WHERE departure_id = ?
-                ");
-                $stmt3->execute([$info['number_of_people'], $info['departure_id']]);
+                // Lưu thông báo Hủy đơn vào Database
+                $message = "⚠️ Khách hàng đã không hoàn tất thanh toán (Hết hạn 15 phút). Đơn #" . $info['booking_id'] . " đã bị hủy.";
+                $link = "manager.php?action=bookingDetail&id=" . $info['booking_id'];
+                $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
+                    ->execute([$info['booking_id'], $link, $message]);
 
                 $this->db->commit();
-                echo json_encode(["status" => "success", "message" => "Đã hủy đơn và hoàn trả ghế thành công"]);
+                echo json_encode(["status" => "success", "message" => "Đã hủy đơn thành công"]);
             } else {
-                echo json_encode(["status" => "error", "message" => "Đơn hàng đã được xử lý, không thể hủy."]);
+                echo json_encode(["status" => "error", "message" => "Đơn hàng đã được xử lý trước đó, không thể hủy."]);
             }
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -138,15 +85,54 @@ class PaymentController
         exit;
     }
 
-    // --- 2. HÀM KIỂM TRA TRẠNG THÁI THANH TOÁN (WEBHOOK SEPAY) ---
+    public function payment()
+    {
+        $hash_id = $_GET['payment_id'] ?? '';
+        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
+
+        $booking_hash = $_GET['booking_id'] ?? '';
+        $booking_id = !empty($booking_hash) ? (is_numeric($booking_hash) ? (int) $booking_hash : decode_id($booking_hash)) : 0;
+
+        if ($payment_id === 0 && $booking_id > 0) {
+            $stmtFind = $this->db->prepare("SELECT payment_id FROM payments WHERE booking_id = ? LIMIT 1");
+            $stmtFind->execute([$booking_id]);
+            $row = $stmtFind->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $payment_id = $row['payment_id'];
+            }
+        }
+
+        if ($payment_id === 0) {
+            die("<div class='text-center mt-5'><h3>Thiếu thông tin thanh toán hoặc đường dẫn không hợp lệ!</h3></div>");
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT p.*, b.customer_name, t.tour_name
+            FROM payments p
+            JOIN bookings b ON p.booking_id = b.booking_id
+            JOIN departures d ON b.departure_id = d.departure_id
+            JOIN tours t ON d.tour_id = t.tour_id
+            WHERE p.payment_id = ?
+        ");
+        $stmt->execute([$payment_id]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$payment) {
+            die("<div class='text-center mt-5'><h3>Không tìm thấy giao dịch</h3></div>");
+        }
+
+        $amount = (int) $payment['amount'];
+        $info = "THANHTOAN " . $payment_id;
+
+        require __DIR__ . '/../views/payment.php';
+    }
+
+    // --- ĐÂY LÀ HÀM QUAN TRỌNG NHẤT: THAY THẾ WEBHOOK ---
     public function checkPaymentStatus()
     {
         header('Content-Type: application/json');
 
-        // 🔥 Lấy mã Hash từ JS gửi lên (Bảo mật)
         $hash_id = $_GET['payment_id'] ?? '';
-
-        // Giải mã thông minh: Nếu là số thì lấy số, nếu là chữ thì giải mã
         $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
 
         if ($payment_id <= 0) {
@@ -187,7 +173,6 @@ class PaymentController
             foreach ($result['transactions'] as $trans) {
                 $content = strtoupper($trans['content'] ?? $trans['transaction_content'] ?? '');
 
-                // Tìm mã THANHTOAN36 (không quan tâm dấu cách)
                 $search = "THANHTOAN" . $payment_id;
                 $cleanContent = str_replace(' ', '', $content);
 
@@ -199,37 +184,56 @@ class PaymentController
         }
 
         if ($is_paid) {
-            // 2. Cập nhật Database
-            $stmt = $this->db->prepare("UPDATE payments SET payment_status = 'paid' WHERE payment_id = ?");
-            $stmt->execute([$payment_id]);
+            try {
+                $this->db->beginTransaction();
 
-            $stmtPay = $this->db->prepare("SELECT booking_id FROM payments WHERE payment_id = ?");
-            $stmtPay->execute([$payment_id]);
-            $payData = $stmtPay->fetch(PDO::FETCH_ASSOC);
+                // Cập nhật trạng thái thanh toán
+                $stmt = $this->db->prepare("UPDATE payments SET payment_status = 'paid' WHERE payment_id = ?");
+                $stmt->execute([$payment_id]);
 
-            if ($payData) {
-                $this->db->prepare("UPDATE bookings SET status = 'confirmed' WHERE booking_id = ?")
-                    ->execute([$payData['booking_id']]);
+                // Lấy thông tin đơn hàng để xử lý ghế và thông báo
+                $stmtPay = $this->db->prepare("
+                    SELECT b.booking_id, b.number_of_people, b.departure_id 
+                    FROM payments p
+                    JOIN bookings b ON p.booking_id = b.booking_id
+                    WHERE p.payment_id = ?
+                ");
+                $stmtPay->execute([$payment_id]);
+                $payData = $stmtPay->fetch(PDO::FETCH_ASSOC);
 
-                // === GỬI THÔNG BÁO PUSHER CŨ DÀNH CHO ADMIN ===
-                try {
-                    $options = array(
-                        'cluster' => 'ap1',
-                        'useTLS' => true
-                    );
-                    $pusher = new Pusher\Pusher(
-                        'dfb02b6665ceae1b4add',
-                        '8897f5d7c596c6ca98eb',
-                        '2146792',
-                        $options
-                    );
-                    $data['message'] = "💰 Ting ting! Khách hàng vừa chuyển khoản thành công đơn #" . $payData['booking_id'];
-                    $pusher->trigger('admin-channel', 'new-booking', $data);
-                } catch (Exception $e) {
-                    error_log("Lỗi Pusher: " . $e->getMessage());
+                if ($payData) {
+                    // 1. Xác nhận đơn hàng
+                    $this->db->prepare("UPDATE bookings SET status = 'confirmed' WHERE booking_id = ?")
+                        ->execute([$payData['booking_id']]);
+
+                    // 2. 🔥 CẬP NHẬT GHẾ VÀO CƠ SỞ DỮ LIỆU
+                    $this->db->prepare("
+                        UPDATE departures 
+                        SET booked_seats = booked_seats + ?, 
+                            available_seats = available_seats - ? 
+                        WHERE departure_id = ?
+                    ")->execute([
+                                $payData['number_of_people'],
+                                $payData['number_of_people'],
+                                $payData['departure_id']
+                            ]);
+
+                    // 3. 🔥 LƯU THÔNG BÁO VÀO DATABASE CHO ADMIN
+                    $message = "💰 Ting ting! Khách hàng vừa chuyển khoản thành công đơn #" . $payData['booking_id'];
+                    $link = "manager.php?action=bookingDetail&id=" . $payData['booking_id'];
+                    $type = "Thanh Toán";
+
+                    $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, ?, ?, ?)");
+                    $stmtNotif->execute([$payData['booking_id'], $type, $link, $message]);
                 }
+
+                $this->db->commit();
+                echo json_encode(["status" => "paid"]);
+
+            } catch (Exception $e) {
+                $this->db->rollBack();
+                echo json_encode(["status" => "error", "message" => $e->getMessage()]);
             }
-            echo json_encode(["status" => "paid"]);
         } else {
             echo json_encode(["status" => "pending"]);
         }
