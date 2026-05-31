@@ -17,7 +17,7 @@ class PaymentController
     // Hàm tạo mã QR 
     public function createQR($amount, $info)
     {
-        $bank = "Sacombank";
+        $bank = "Sacombank"; 
         $account = $this->accountNumber;
         $name = "CONG TY DU LICH TRAVELVN";
 
@@ -38,7 +38,7 @@ class PaymentController
 
         // Nhận ID từ JS (có thể là mã băm hoặc số)
         $hash_id = $_POST['payment_id'] ?? '';
-        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
+        $payment_id = is_numeric($hash_id) ? (int)$hash_id : decode_id($hash_id);
 
         if ($payment_id <= 0) {
             echo json_encode(["status" => "error", "message" => "Mã thanh toán không hợp lệ!"]);
@@ -71,7 +71,7 @@ class PaymentController
                 $message = "⚠️ Khách hàng đã không hoàn tất thanh toán (Hết hạn 15 phút). Đơn #" . $info['booking_id'] . " đã bị hủy.";
                 $link = "manager.php?action=bookingDetail&id=" . $info['booking_id'];
                 $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
-                    ->execute([$info['booking_id'], $link, $message]);
+                         ->execute([$info['booking_id'], $link, $message]);
 
                 $this->db->commit();
                 echo json_encode(["status" => "success", "message" => "Đã hủy đơn thành công"]);
@@ -88,10 +88,10 @@ class PaymentController
     public function payment()
     {
         $hash_id = $_GET['payment_id'] ?? '';
-        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
+        $payment_id = is_numeric($hash_id) ? (int)$hash_id : decode_id($hash_id);
 
         $booking_hash = $_GET['booking_id'] ?? '';
-        $booking_id = !empty($booking_hash) ? (is_numeric($booking_hash) ? (int) $booking_hash : decode_id($booking_hash)) : 0;
+        $booking_id = !empty($booking_hash) ? (is_numeric($booking_hash) ? (int)$booking_hash : decode_id($booking_hash)) : 0;
 
         if ($payment_id === 0 && $booking_id > 0) {
             $stmtFind = $this->db->prepare("SELECT payment_id FROM payments WHERE booking_id = ? LIMIT 1");
@@ -133,7 +133,7 @@ class PaymentController
         header('Content-Type: application/json');
 
         $hash_id = $_GET['payment_id'] ?? '';
-        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
+        $payment_id = is_numeric($hash_id) ? (int)$hash_id : decode_id($hash_id);
 
         if ($payment_id <= 0) {
             echo json_encode(["status" => "error", "message" => "Invalid Payment ID"]);
@@ -172,7 +172,7 @@ class PaymentController
         if (isset($result['transactions'])) {
             foreach ($result['transactions'] as $trans) {
                 $content = strtoupper($trans['content'] ?? $trans['transaction_content'] ?? '');
-
+                
                 $search = "THANHTOAN" . $payment_id;
                 $cleanContent = str_replace(' ', '', $content);
 
@@ -205,7 +205,7 @@ class PaymentController
                     // 1. Xác nhận đơn hàng
                     $this->db->prepare("UPDATE bookings SET status = 'confirmed' WHERE booking_id = ?")
                         ->execute([$payData['booking_id']]);
-
+                    
                     // 2. 🔥 CẬP NHẬT GHẾ VÀO CƠ SỞ DỮ LIỆU
                     $this->db->prepare("
                         UPDATE departures 
@@ -213,16 +213,16 @@ class PaymentController
                             available_seats = available_seats - ? 
                         WHERE departure_id = ?
                     ")->execute([
-                                $payData['number_of_people'],
-                                $payData['number_of_people'],
-                                $payData['departure_id']
-                            ]);
+                        $payData['number_of_people'], 
+                        $payData['number_of_people'], 
+                        $payData['departure_id']
+                    ]);
 
                     // 3. 🔥 LƯU THÔNG BÁO VÀO DATABASE CHO ADMIN
                     $message = "💰 Ting ting! Khách hàng vừa chuyển khoản thành công đơn #" . $payData['booking_id'];
                     $link = "manager.php?action=bookingDetail&id=" . $payData['booking_id'];
                     $type = "Thanh Toán";
-
+                    
                     $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, ?, ?, ?)");
                     $stmtNotif->execute([$payData['booking_id'], $type, $link, $message]);
                 }
