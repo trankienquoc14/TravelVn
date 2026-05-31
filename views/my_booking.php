@@ -473,7 +473,7 @@
                 <div class="search-box">
                     <i class="bi bi-search"></i>
                     <input type="text" id="bookingSearchInput" class="form-control filter-control"
-                        placeholder="Tìm mã đơn, tên tour, khách hàng...">
+                        placeholder="Tìm mã đơn, tên tour,..">
                 </div>
             </div>
 

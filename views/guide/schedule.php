@@ -1,17 +1,50 @@
 <?php 
-$errorMsg = '';
+date_default_timezone_set('Asia/Ho_Chi_Minh');
 
+$errorMsg = '';
+$today = date('Y-m-d');
+
+function getRealDepartureStatus($startDate, $endDate)
+{
+    $today = date('Y-m-d');
+    $start = date('Y-m-d', strtotime($startDate));
+    $end = date('Y-m-d', strtotime($endDate));
+
+    if ($today < $start) {
+        return 'upcoming';
+    }
+
+    if ($today >= $start && $today <= $end) {
+        return 'ongoing';
+    }
+
+    return 'completed';
+}
+
+function getRealDepartureStatusText($status)
+{
+    return match ($status) {
+        'upcoming' => 'Chờ khởi hành',
+        'ongoing' => 'Đang diễn ra',
+        'completed' => 'Đã hoàn thành',
+        default => 'Không xác định'
+    };
+}
 // 1. LẤY GIÁ TRỊ TỪ BỘ LỌC BÊN DƯỚI FORM
 $filterStatus = $_GET['status'] ?? '';
 $filterStartDate = $_GET['start_date'] ?? '';
 $filterEndDate = $_GET['end_date'] ?? '';
-
+$sortBy = $_GET['sort'] ?? 'smart';
 // 2. BẮT LỖI BỘ LỌC (Validation)
 if ($filterStartDate !== '' && $filterEndDate !== '' && $filterStartDate > $filterEndDate) {
     $errorMsg = "Lỗi: Ngày 'Khởi hành đến' không được nhỏ hơn ngày 'Khởi hành từ'!";
 }
 
 if (!empty($departures)) {
+    foreach ($departures as &$d) {
+    $d['real_status'] = getRealDepartureStatus($d['start_date'], $d['end_date']);
+}
+unset($d);
     // 3. LỌC TRÙNG LẶP DỮ LIỆU (Fix lỗi lặp Tour Vũng Tàu)
     // Giữ lại các chuyến đi duy nhất dựa trên departure_id
     $uniqueDepartures = [];
@@ -32,9 +65,9 @@ if (!empty($departures)) {
             $startDateObj = date('Y-m-d', strtotime($d['start_date']));
             
             // Lọc theo Trạng thái
-            if ($filterStatus !== '' && $d['status'] !== $filterStatus) {
-                $match = false;
-            }
+            if ($filterStatus !== '' && ($d['real_status'] ?? '') !== $filterStatus) {
+    $match = false;
+}
             // Lọc theo Ngày: Khởi hành TỪ ngày...
             if ($filterStartDate !== '' && $startDateObj < $filterStartDate) {
                 $match = false;
@@ -49,16 +82,50 @@ if (!empty($departures)) {
 
     // 5. THUẬT TOÁN SẮP XẾP THÔNG MINH
     // Ưu tiên: 1. Đang diễn ra -> 2. Chờ khởi hành -> 3. Đã hoàn thành
-    usort($departures, function($a, $b) {
-        $order = ['ongoing' => 1, 'upcoming' => 2, 'completed' => 3];
-        $rankA = $order[$a['status']] ?? 99;
-        $rankB = $order[$b['status']] ?? 99;
-        
-        if ($rankA !== $rankB) {
-            return $rankA <=> $rankB;
-        }
-        return strtotime($a['start_date']) <=> strtotime($b['start_date']);
-    });
+    usort($departures, function($a, $b) use ($sortBy) {
+    $order = ['ongoing' => 1, 'upcoming' => 2, 'completed' => 3];
+
+    $rankA = $order[$a['real_status'] ?? ''] ?? 99;
+    $rankB = $order[$b['real_status'] ?? ''] ?? 99;
+
+    $startA = strtotime($a['start_date']);
+    $startB = strtotime($b['start_date']);
+
+    $endA = strtotime($a['end_date']);
+    $endB = strtotime($b['end_date']);
+
+    switch ($sortBy) {
+        case 'start_asc':
+            return $startA <=> $startB;
+
+        case 'start_desc':
+            return $startB <=> $startA;
+
+        case 'end_asc':
+            return $endA <=> $endB;
+
+        case 'end_desc':
+            return $endB <=> $endA;
+
+        case 'status':
+            if ($rankA !== $rankB) {
+                return $rankA <=> $rankB;
+            }
+            return $startA <=> $startB;
+
+        case 'smart':
+        default:
+            if ($rankA !== $rankB) {
+                return $rankA <=> $rankB;
+            }
+
+            if (($a['real_status'] ?? '') === 'completed') {
+                return $startB <=> $startA;
+            }
+
+            return $startA <=> $startB;
+    }
+});
 }
 ?>
 
@@ -167,7 +234,10 @@ if (!empty($departures)) {
     
     <div class="page-header">
         <h1 class="page-title"><i class="bi bi-briefcase-fill"></i> Lịch phân công dẫn đoàn</h1>
-        <p class="page-subtitle">Quản lý và theo dõi tiến độ các chuyến đi của bạn.</p>
+        <p class="page-subtitle">
+    Quản lý và theo dõi tiến độ các chuyến đi của bạn. 
+    Trạng thái được tự động cập nhật theo ngày hiện tại: <strong><?= date('d/m/Y') ?></strong>
+</p>
     </div>
 
     <div class="filter-box">
@@ -191,7 +261,17 @@ if (!empty($departures)) {
                 <label class="filter-label"><i class="bi bi-calendar2-plus"></i> Khởi hành đến</label>
                 <input type="date" name="end_date" class="form-control filter-input" value="<?= $_GET['end_date'] ?? '' ?>">
             </div>
-            
+            <div class="col-md-3">
+    <label class="filter-label"><i class="bi bi-sort-down"></i> Sắp xếp</label>
+    <select name="sort" class="form-select filter-input">
+        <option value="smart" <?= ($sortBy == 'smart') ? 'selected' : '' ?>>Thông minh</option>
+        <option value="status" <?= ($sortBy == 'status') ? 'selected' : '' ?>>Theo trạng thái</option>
+        <option value="start_asc" <?= ($sortBy == 'start_asc') ? 'selected' : '' ?>>Khởi hành gần nhất</option>
+        <option value="start_desc" <?= ($sortBy == 'start_desc') ? 'selected' : '' ?>>Khởi hành xa nhất</option>
+        <option value="end_asc" <?= ($sortBy == 'end_asc') ? 'selected' : '' ?>>Kết thúc gần nhất</option>
+        <option value="end_desc" <?= ($sortBy == 'end_desc') ? 'selected' : '' ?>>Kết thúc xa nhất</option>
+    </select>
+</div>
             <div class="col-md-3 d-flex gap-2">
                 <button type="submit" class="btn-filter flex-grow-1">
                     <i class="bi bi-search"></i> Lọc
@@ -222,23 +302,26 @@ if (!empty($departures)) {
             <?php foreach ($departures as $d): 
                 $startDate = !empty($d['start_date']) ? date('d/m/Y', strtotime($d['start_date'])) : '--';
                 $endDate = !empty($d['end_date']) ? date('d/m/Y', strtotime($d['end_date'])) : '--';
-                
-                $statusClass = 'status-upcoming';
-                $badgeClass = 'badge-upcoming';
-                $statusText = 'Chờ khởi hành';
-                $iconStatus = 'bi-hourglass-split';
 
-                if ($d['status'] == 'ongoing') {
-                    $statusClass = 'status-ongoing';
-                    $badgeClass = 'badge-ongoing';
-                    $statusText = 'Đang diễn ra';
-                    $iconStatus = 'bi-play-circle-fill';
-                } elseif ($d['status'] == 'completed') {
-                    $statusClass = 'status-completed';
-                    $badgeClass = 'badge-completed';
-                    $statusText = 'Đã hoàn thành';
-                    $iconStatus = 'bi-check-circle-fill';
-                }
+                $realStatus = $d['real_status'] ?? getRealDepartureStatus($d['start_date'], $d['end_date']);
+
+$statusClass = 'status-upcoming';
+$badgeClass = 'badge-upcoming';
+$statusText = 'Chờ khởi hành';
+$iconStatus = 'bi-hourglass-split';
+
+if ($realStatus == 'ongoing') {
+    $statusClass = 'status-ongoing';
+    $badgeClass = 'badge-ongoing';
+    $statusText = 'Đang diễn ra';
+    $iconStatus = 'bi-play-circle-fill';
+
+} elseif ($realStatus == 'completed') {
+    $statusClass = 'status-completed';
+    $badgeClass = 'badge-completed';
+    $statusText = 'Đã hoàn thành';
+    $iconStatus = 'bi-check-circle-fill';
+}
             ?>
                 
                 <div class="tour-card <?= $statusClass ?>">

@@ -1,3 +1,81 @@
+<?php
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+function getRealDepartureStatus($startDate, $endDate)
+{
+    $today = date('Y-m-d');
+    $start = date('Y-m-d', strtotime($startDate));
+    $end = date('Y-m-d', strtotime($endDate));
+
+    if ($today < $start) {
+        return 'upcoming';
+    }
+
+    if ($today >= $start && $today <= $end) {
+        return 'ongoing';
+    }
+
+    return 'completed';
+}
+
+function getDepartureStatusView($status)
+{
+    return match ($status) {
+        'upcoming' => [
+            'text' => 'Chờ khởi hành',
+            'class' => 'status-upcoming',
+            'icon' => 'bi-hourglass-split'
+        ],
+        'ongoing' => [
+            'text' => 'Đang diễn ra',
+            'class' => 'status-ongoing',
+            'icon' => 'bi-play-circle-fill'
+        ],
+        'completed' => [
+            'text' => 'Đã hoàn thành',
+            'class' => 'status-completed',
+            'icon' => 'bi-check-circle-fill'
+        ],
+        default => [
+            'text' => 'Không xác định',
+            'class' => 'status-unknown',
+            'icon' => 'bi-question-circle'
+        ]
+    };
+}
+
+if (!empty($departures)) {
+    foreach ($departures as &$d) {
+        $d['real_status'] = getRealDepartureStatus($d['start_date'], $d['end_date']);
+    }
+    unset($d);
+
+    usort($departures, function ($a, $b) {
+        $order = [
+            'ongoing' => 1,
+            'upcoming' => 2,
+            'completed' => 3
+        ];
+
+        $rankA = $order[$a['real_status']] ?? 99;
+        $rankB = $order[$b['real_status']] ?? 99;
+
+        if ($rankA !== $rankB) {
+            return $rankA <=> $rankB;
+        }
+
+        $startA = strtotime($a['start_date']);
+        $startB = strtotime($b['start_date']);
+
+        if ($a['real_status'] === 'completed') {
+            return $startB <=> $startA;
+        }
+
+        return $startA <=> $startB;
+    });
+}
+?>
+
 <?php include __DIR__ . '/../layouts/header.php'; ?>
 
 <style>
@@ -132,6 +210,64 @@
         .seats-block { width: 100%; margin-top: 10px; }
         .meta-info { justify-content: center; flex-wrap: wrap; }
     }
+    .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-upcoming {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #bae6fd;
+}
+
+.status-ongoing {
+    background: #dcfce7;
+    color: #16a34a;
+    border-color: #86efac;
+}
+
+.status-completed {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #cbd5e1;
+}
+
+.status-unknown {
+    background: #f3f4f6;
+    color: #6b7280;
+    border-color: #d1d5db;
+}
+
+.departure-card.status-ongoing {
+    border-color: #86efac;
+}
+
+.departure-card.status-completed {
+    opacity: 0.72;
+    background: #fafafa;
+}
+
+.departure-card.status-completed:hover {
+    opacity: 1;
+}
+
+.departure-card.status-completed .date-block {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.departure-card.status-ongoing .date-block {
+    background: #dcfce7;
+    color: #16a34a;
+}
 </style>
 
 <div class="admin-container">
@@ -147,7 +283,10 @@
             <div class="admin-header">
                 <div>
                     <h1 class="admin-title">Lịch Vận Hành</h1>
-                    <p class="text-muted mb-0 fw-medium">Theo dõi tiến độ bán chỗ và phân công lịch trình.</p>
+                    <p class="text-muted mb-0 fw-medium">
+    Theo dõi tiến độ bán chỗ và phân công lịch trình.
+    Trạng thái tự động cập nhật theo ngày hiện tại: <strong><?= date('d/m/Y') ?></strong>
+</p>
                 </div>
                 <div>
                     <a href="/manager.php?action=createDeparture" class="btn btn-primary fw-bold shadow-sm rounded-pill px-4">
@@ -159,22 +298,22 @@
             <div class="departure-list">
                 <?php if (!empty($departures)): ?>
                     <?php foreach ($departures as $d): ?>
+                    <?php 
+                        $max = (int)$d['max_seats'];
+                        $booked = (int)$d['real_booked_seats']; 
                         
-                        <?php 
-    $max = (int)$d['max_seats'];
-    // Sử dụng cột real_booked_seats vừa query được
-    $booked = (int)$d['real_booked_seats']; 
-    
-    $available = $max - $booked;
-    if ($available < 0) $available = 0; 
-    
-    $percent = ($max > 0) ? round(($booked / $max) * 100) : 0;
-    
-    // Giữ nguyên logic đổi màu thanh progress của bạn
-    $progressColor = 'bg-success'; 
-    if ($percent >= 80 && $percent < 100) $progressColor = 'bg-warning'; 
-    if ($percent >= 100) $progressColor = 'bg-danger'; 
-?>
+                        $available = $max - $booked;
+                        if ($available < 0) $available = 0; 
+                        
+                        $percent = ($max > 0) ? round(($booked / $max) * 100) : 0;
+                        
+                        $progressColor = 'bg-success'; 
+                        if ($percent >= 80 && $percent < 100) $progressColor = 'bg-warning'; 
+                        if ($percent >= 100) $progressColor = 'bg-danger';
+
+                        $realStatus = $d['real_status'] ?? getRealDepartureStatus($d['start_date'], $d['end_date']);
+                        $statusView = getDepartureStatusView($realStatus);
+                    ?>
 
                         <div class="departure-card">
                             
@@ -187,9 +326,10 @@
                             <div class="info-block">
                                 <div class="tour-name">
                                     <?= htmlspecialchars($d['tour_name']) ?>
-                                    <span class="badge bg-light text-dark border fw-normal" style="font-size: 0.75rem;">
-                                        <?= htmlspecialchars($d['status']) ?>
-                                    </span>
+                                    <span class="status-pill <?= htmlspecialchars($statusView['class']) ?>">
+    <i class="bi <?= htmlspecialchars($statusView['icon']) ?>"></i>
+    <?= htmlspecialchars($statusView['text']) ?>
+</span> 
                                 </div>
                                 <div class="meta-info">
                                     <span><i class="bi bi-arrow-right-circle text-danger"></i> Về: <?= date('d/m/Y', strtotime($d['end_date'])) ?></span>
