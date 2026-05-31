@@ -552,19 +552,19 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         }
     });
 
-    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ SỬA: PHÂN LOẠI CÓ TIẾNG / IM LẶNG) 🔥
-    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ SỬA: PHÂN LOẠI CÓ TIẾNG / IM LẶNG & TỰ VẼ DANH SÁCH) 🔥
+    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ FIX LỖI ÉP KIỂU & AUTO F5 CHO KHÁCH)
     socket.on("system_notification", function (data) {
         let isForMe = false;
+        let myUserId = '<?= $_SESSION['user']['user_id'] ?? '' ?>';
+        let myRole = '<?= $_SESSION['user']['role'] ?? 'customer' ?>';
 
-        // Phân loại ai được nhận
+        // 1. Phân loại đối tượng nhận tin siêu chuẩn xác (Ép về chuỗi để so sánh)
         if (data.target_role === 'all') isForMe = true;
-        if (data.target_role === 'admin_group' && (globalUserRole === 'admin' || globalUserRole === 'tour_manager')) isForMe = true;
-        if (data.target_role === globalUserRole) isForMe = true;
-        if (data.target_user_id && data.target_user_id === '<?= $_SESSION['user']['user_id'] ?? '' ?>') isForMe = true;
+        if (data.target_role === 'admin_group' && (myRole === 'admin' || myRole === 'tour_manager')) isForMe = true;
+        if (data.target_user_id && String(data.target_user_id) === String(myUserId)) isForMe = true;
 
         if (isForMe) {
-            // 1. TĂNG SỐ LƯỢNG HIỂN THỊ TRÊN CHUÔNG HEADER
+            // --- A. CẬP NHẬT CHUÔNG ĐỎ TRÊN HEADER NẾU CÓ ---
             let badge = document.getElementById('global-notif-badge');
             if (badge) {
                 let currentCount = parseInt(badge.innerText) || 0;
@@ -572,25 +572,22 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 badge.classList.remove('d-none');
             }
 
-            // 2. 🔥 MA THUẬT Ở ĐÂY: TỰ ĐỘNG VẼ HTML CHÈN VÀO DANH SÁCH KHÔNG CẦN F5
+            // --- B. VẼ GIAO DIỆN CHÈN VÀO DANH SÁCH CHUÔNG BẤM XUỐNG ---
             let notifMenu = document.querySelector('.notif-dropdown-menu');
             if (notifMenu) {
-                // Xóa dòng chữ "Bạn chưa có thông báo nào" nếu nó đang hiện
                 let emptyMsg = notifMenu.querySelector('.text-muted.text-center');
-                if (emptyMsg) emptyMsg.remove();
+                if (emptyMsg) emptyMsg.remove(); // Xóa chữ "Chưa có thông báo nào"
 
-                // Phân loại màu sắc và Icon dựa trên dữ liệu gửi tới
                 let typeName = data.type || 'Hệ thống';
                 let bgClass = 'bg-primary';
                 let icon = 'bi-info-circle';
 
-                // Bắt từ khóa để tự động lên màu đẹp mắt
                 if (typeName === 'Thanh Toán' || (data.title && data.title.includes('Thanh toán'))) { bgClass = 'bg-success'; icon = 'bi-currency-dollar'; typeName = 'Thanh Toán'; }
-                else if (typeName === 'Hủy Đơn' || (data.title && data.title.includes('giải phóng'))) { bgClass = 'bg-danger'; icon = 'bi-x-circle'; typeName = 'Hủy Đơn'; }
+                else if (typeName === 'Xác Nhận') { bgClass = 'bg-success'; icon = 'bi-check-circle'; typeName = 'Xác Nhận'; }
+                else if (typeName === 'Hủy Đơn' || (data.title && data.title.includes('hủy'))) { bgClass = 'bg-danger'; icon = 'bi-x-circle'; typeName = 'Hủy Đơn'; }
                 else if (typeName === 'Đơn Hàng' || (data.title && data.title.includes('đơn'))) { bgClass = 'bg-warning text-dark'; icon = 'bi-cart-check'; typeName = 'Đơn Hàng'; }
                 else if (data.title && data.title.includes('Tin nhắn')) { bgClass = 'bg-info'; icon = 'bi-chat-dots'; typeName = 'Tin nhắn'; }
 
-                // Khởi tạo thẻ LI chứa HTML y hệt như cấu trúc của PHP (trong file header)
                 let newItem = document.createElement('li');
                 newItem.innerHTML = `
                     <a href="${data.link || '#'}" class="dropdown-item d-flex align-items-center py-3 border-bottom notif-item bg-light">
@@ -613,39 +610,50 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                     </a>
                 `;
 
-                // Tìm thẻ tiêu đề (luôn cố định ở dòng 1) và nhét thông báo mới ngay bên dưới nó
+                // Chèn vào vị trí đầu tiên (ngay dưới chữ tiêu đề)
                 let headerLi = notifMenu.querySelector('li.sticky-top');
                 if (headerLi) {
                     headerLi.insertAdjacentElement('afterend', newItem);
+                } else {
+                    notifMenu.prepend(newItem);
                 }
             }
 
-            // 3. HIỆN POPUP Ở GÓC MÀN HÌNH (Chỉ hiện khi is_silent = false)
+            // --- C. HIỂN THỊ TOAST POPUP Ở GÓC PHẢI & PHÁT ÂM THANH ---
             if (!data.is_silent) {
-                let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)"; // Info mặc định
-                let popupIcon = "📣";
+                let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)";
+                let popupIcon = "🔔";
 
-                if (data.type === 'success' || typeName === 'Thanh Toán') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; popupIcon = "✅"; }
+                if (data.type === 'success' || typeName === 'Thanh Toán' || typeName === 'Xác Nhận') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; popupIcon = "✅"; }
                 if (data.type === 'warning' || typeName === 'Đơn Hàng') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; popupIcon = "⚠️"; }
                 if (data.type === 'error' || typeName === 'Hủy Đơn') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; popupIcon = "❌"; }
 
-                Toastify({
-                    text: `${popupIcon} <b>${data.title || typeName}</b><br><small>${data.message}</small>`,
-                    duration: 6000,
-                    close: true,
-                    gravity: "bottom",
-                    position: "right",
-                    style: { background: bgColor, borderRadius: "12px", color: "#fff", padding: "14px 20px" },
-                    escapeMarkup: false
-                }).showToast();
+                if (typeof Toastify !== 'undefined') {
+                    Toastify({
+                        text: `${popupIcon} <b>${data.title || typeName}</b><br><small>${data.message}</small>`,
+                        duration: 8000,
+                        close: true,
+                        gravity: "bottom",
+                        position: "right",
+                        style: { background: bgColor, borderRadius: "12px", color: "#fff", padding: "14px 20px" },
+                        escapeMarkup: false
+                    }).showToast();
+                }
 
                 let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.volume = 0.5;
                 audio.play().catch(e => { });
             }
+
+            // --- D. AUTO F5 DÀNH RIÊNG CHO KHÁCH HÀNG KHI ĐANG MỞ TRANG QUẢN LÝ ---
+            // Nếu khách đang xem trang "Chuyến đi của tôi" hoặc "Chi tiết Booking", tự động reload bảng trong 3 giây
+            if (window.location.href.includes('action=myBookings') || window.location.href.includes('action=bookingDetail')) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 3000);
+            }
         }
     });
-
     // CÁC HÀM XỬ LÝ CHAT BÊN DƯỚI (Giữ nguyên y hệt code cũ của bạn)
     function scrollBottom() { if (chatBody) { chatBody.scrollTo({ top: chatBody.scrollHeight, behavior: 'smooth' }); } }
 
