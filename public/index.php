@@ -17,26 +17,27 @@ require_once '../controllers/ChatController.php';
 $action = $_GET['action'] ?? 'home';
 
 // 4. Phân luồng Controller
-if ($action === 'payment' || $action === 'confirmPayment' || $action === 'webhook' || $action === 'checkPaymentStatus') {
+if ($action === 'payment' || $action === 'confirmPayment' || $action === 'webhook' || $action === 'checkPaymentStatus' || $action === 'cancelBooking') {
     $c = new PaymentController();
 } elseif ($action === 'login' || $action === 'register' || $action === 'logout' || $action === 'profile' || $action === 'updateProfile' || $action === 'updatePassword') {
     $c = new AuthController();
 } elseif ($action === 'submitReview') {
     $c = new ReviewController();
-    
-// 🔥 BỔ SUNG THÊM 'getCustomerUnreadCount' và 'markAsRead' VÀO ĐÂY:
-} elseif ($action === 'sendMessage' || 
-          $action === 'getHistory' || 
-          $action === 'getCustomerUnreadCount' || 
-          $action === 'markAsRead' ||
-          $action === 'uploadFile' ||       // 🔥 Bổ sung Upload File đính kèm
-          $action === 'uploadVoice' ||      // 🔥 Bổ sung Upload Ghi âm
-          $action === 'sendLocation' ||     // 🔥 Bổ sung Gửi định vị
-          $action === 'triggerCleanup'      // 🔥 Bổ sung Dọn dẹp rác
+
+    // 🔥 BỔ SUNG THÊM 'getCustomerUnreadCount' và 'markAsRead' VÀO ĐÂY:
+} elseif (
+    $action === 'sendMessage' ||
+    $action === 'getHistory' ||
+    $action === 'getCustomerUnreadCount' ||
+    $action === 'markAsRead' ||
+    $action === 'uploadFile' ||       // 🔥 Bổ sung Upload File đính kèm
+    $action === 'uploadVoice' ||      // 🔥 Bổ sung Upload Ghi âm
+    $action === 'sendLocation' ||     // 🔥 Bổ sung Gửi định vị
+    $action === 'triggerCleanup'      // 🔥 Bổ sung Dọn dẹp rác
 ) {
     // Định tuyến TẤT CẢ các hành động liên quan đến Chat về đúng ChatController
     $c = new ChatController();
-    
+
 } else {
     // Các action: home, tours, detail, booking, confirmBooking, myBookings, bookingDetail
     $c = new TourController();

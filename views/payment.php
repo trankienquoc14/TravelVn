@@ -6,17 +6,19 @@ if (empty($payment)) {
 }
 include 'layouts/header.php';
 
-// 1. Lấy ID thanh toán
-$payment_id = $payment['payment_id'] ?? $_GET['payment_id'] ?? 0;
+// Tính toán thời gian đếm ngược không bị reset khi reload
+// Ưu tiên lấy mã băm từ URL để bảo mật, nếu không có mới lấy ID thật
+$secure_payment_id = $_GET['payment_id'] ?? $payment['payment_id'] ?? 0;
+$payment_id = $payment['payment_id']; // Vẫn giữ ID thật để hiển thị ra màn hình
 
-// 2. KHAI BÁO THÔNG TIN TẠO MÃ QR (Đã thêm vào đây để tự động chạy)
-$bank_id = "TPBank"; 
-$account_no = "00000419627";
-$account_name = "DOAN THI TRAM"; // Tên in trên thẻ
+// --- ĐÃ CHỈNH SỬA: Đồng bộ với SePay (Sacombank, Trần Kiến Quốc) ---
+$bank_id = "Sacombank";
+$account_no = "050134910132";
+$account_name = "TRAN KIEN QUOC";
 $amount = $payment['amount'] ?? 0;
 $info = "THANHTOAN" . $payment_id;
 
-// 3. Nối chuỗi tạo link ảnh QR của VietQR
+// Nối chuỗi tạo link ảnh QR của VietQR
 $qr_url = "https://img.vietqr.io/image/" . $bank_id . "-" . $account_no . "-compact2.png";
 $qr_url .= "?amount=" . $amount;
 $qr_url .= "&addInfo=" . $info;
@@ -161,11 +163,12 @@ $qr_url .= "&accountName=" . urlencode($account_name);
                 <div class="mb-4">
                     <div class="info-row">
                         <span class="info-label">Khách hàng</span>
-                        <span class="info-value"><?= htmlspecialchars($payment['customer_name'] ?? 'Khách hàng') ?></span>
+                        <span
+                            class="info-value"><?= htmlspecialchars($payment['customer_name'] ?? 'Khách hàng') ?></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Ngân hàng</span>
-                        <span class="info-value">TPBank</span>
+                        <span class="info-value">Sacombank</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Số tài khoản</span>
@@ -206,31 +209,19 @@ $qr_url .= "&accountName=" . urlencode($account_name);
                         <p class="text-muted small">Trang sẽ tự động chuyển hướng ngay khi nhận được thanh toán.</p>
                     </div>
                 </div>
-
             </div>
         </div>
 
         <div class="text-center mt-3">
             <a href="index.php?action=myBookings" class="text-decoration-none text-muted"><i
-                    class="bi bi-arrow-left me-1"></i> Quay
-                lại danh sách đơn</a>
+                    class="bi bi-arrow-left me-1"></i> Quay lại danh sách đơn</a>
         </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
-    const socket = io("wss://travelvn-socketserver.onrender.com", {
-        transports: ["websocket"]
-    });
-
-    const currentUserId = "<?= $_SESSION['user']['user_id'] ?? 0 ?>";
-
-    socket.emit("join_user_room", {
-        user_id: currentUserId
-    });
     // 1. Hàm sao chép văn bản (Giữ nguyên)
     function copyText(elementId, isAmount = false) {
         let textToCopy = document.getElementById(elementId).innerText;
@@ -238,7 +229,6 @@ $qr_url .= "&accountName=" . urlencode($account_name);
             textToCopy = textToCopy.replace(/,/g, '');
         }
         navigator.clipboard.writeText(textToCopy).then(() => {
-            // Thay thế luôn alert copy bằng Toast nhỏ gọn ở góc màn hình
             Swal.fire({
                 toast: true,
                 position: 'top-end',
@@ -252,29 +242,48 @@ $qr_url .= "&accountName=" . urlencode($account_name);
         });
     }
 
-    // 2. Lấy ID thanh toán từ PHP
-    const currentPaymentId = <?= json_encode($payment_id) ?>;
+    // 2. PHÂN TÁCH ID BẢO MẬT & ID ĐỒNG HỒ
+    const securePaymentId = <?= json_encode($secure_payment_id) ?>; // Gửi lên Server (Ví dụ: obGKb3)
+    const rawPaymentId = <?= json_encode($payment_id) ?>; // Quản lý đồng hồ LocalStorage (Ví dụ: 36)
+
+    let countdownInterval;
 
     // 3. Hàm kiểm tra trạng thái tự động (Polling)
     function checkStatus() {
-        fetch(`index.php?action=checkPaymentStatus&payment_id=${currentPaymentId}`)
+        // 🔥 Gọi lên Server bằng mã bảo mật (Hash)
+        fetch(`index.php?action=checkPaymentStatus&payment_id=${securePaymentId}`)
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'paid') {
-    clearInterval(pollingInterval);
-    localStorage.removeItem(STORAGE_KEY);
+                    // DỪNG ĐỒNG HỒ KHI TIỀN VÀO!
+                    clearInterval(pollingInterval);
+                    clearInterval(countdownInterval);
+                    localStorage.removeItem(STORAGE_KEY);
 
-    if (data.realtime) {
-        socket.emit("payment_success", data.realtime);
-    }
+                    // Bắn thông báo Realtime lên Server Socket
+                    if (typeof window.globalSocket !== 'undefined') {
+                        window.globalSocket.emit("send_notification", {
+                            target_role: 'admin_group',
+                            type: 'success',
+                            title: '💰 Khách đã chuyển khoản!',
+                            message: `Đơn hàng #${rawPaymentId} vừa nhận thanh toán thành công.`
+                        });
 
-    Swal.fire({
+                        window.globalSocket.emit("send_notification", {
+                            target_role: 'all',
+                            type: 'info',
+                            title: 'Cập nhật vé',
+                            message: 'Vừa có người chốt đơn một tour du lịch!'
+                        });
+                    }
+
+                    Swal.fire({
                         title: 'Thanh toán thành công!',
                         text: 'Cảm ơn bạn đã tin tưởng TravelVN. Đơn đặt tour của bạn đã được xác nhận.',
                         icon: 'success',
                         confirmButtonText: 'Xem chi tiết đơn hàng <i class="bi bi-arrow-right"></i>',
-                        confirmButtonColor: '#0194f3', // Màu xanh thương hiệu của bạn
-                        allowOutsideClick: false // Khóa không cho bấm ra ngoài để ép chuyển trang
+                        confirmButtonColor: '#0194f3',
+                        allowOutsideClick: false
                     }).then((result) => {
                         if (result.isConfirmed) {
                             window.location.href = 'index.php?action=myBookings';
@@ -285,11 +294,10 @@ $qr_url .= "&accountName=" . urlencode($account_name);
             .catch(error => console.log('Đang kết nối server...'));
     }
 
-    // Thiết lập vòng lặp: Cứ mỗi 3 giây kiểm tra 1 lần
     const pollingInterval = setInterval(checkStatus, 3000);
 
-    // 4. HÀM ĐẾM NGƯỢC THÔNG MINH (Giữ nguyên)
-    const STORAGE_KEY = `payment_expire_${currentPaymentId}`;
+    // 4. HÀM ĐẾM NGƯỢC (TÁCH BIỆT CÁC ĐƠN HÀNG BẰNG ID THẬT)
+    const STORAGE_KEY = `payment_expire_${rawPaymentId}`;
     let expireTime = localStorage.getItem(STORAGE_KEY);
 
     if (!expireTime) {
@@ -299,16 +307,35 @@ $qr_url .= "&accountName=" . urlencode($account_name);
 
     const timerDisplay = document.getElementById('countdown-timer');
 
-    const countdown = setInterval(function () {
+    countdownInterval = setInterval(function () {
         let now = Date.now();
         let timeRemaining = Math.floor((expireTime - now) / 1000);
 
         if (timeRemaining <= 0) {
-            clearInterval(countdown);
+            clearInterval(countdownInterval);
             clearInterval(pollingInterval);
             localStorage.removeItem(STORAGE_KEY);
-            
-            // Đổi luôn thông báo hết giờ cho đồng bộ
+
+            if (typeof window.globalSocket !== 'undefined') {
+                window.globalSocket.emit("send_notification", {
+                    target_role: 'all',
+                    type: 'warning',
+                    title: 'Vé vừa được giải phóng!',
+                    message: 'Có một số chỗ vừa được nhả ra do quá hạn thanh toán. Hãy nhanh tay đặt ngay!'
+                });
+            }
+
+            // 🔥 BẮT BUỘC GỬI LỆNH HỦY VÉ & TRẢ GHẾ QUA POST BẰNG MÃ BẢO MẬT (HASH)
+            let formData = new FormData();
+            formData.append('payment_id', securePaymentId);
+
+            fetch('index.php?action=cancelBooking', {
+                method: 'POST',
+                body: formData
+            }).then(res => {
+                console.log("Đã gửi lệnh hủy đơn bảo mật lên server!");
+            });
+
             Swal.fire({
                 title: 'Hết thời gian thanh toán',
                 text: 'Phiên thanh toán này đã hết hạn. Vui lòng thử đặt lại nhé!',
