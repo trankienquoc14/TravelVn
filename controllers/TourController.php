@@ -53,8 +53,8 @@ class TourController
     LIMIT 8
 ";
 
-$stmtBest = $this->db->query($queryBestSeller);
-$bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
+        $stmtBest = $this->db->query($queryBestSeller);
+        $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
 
         $stmtBlogs = $this->db->query("SELECT * FROM blogs ORDER BY created_at DESC LIMIT 4");
         $blogs = $stmtBlogs->fetchAll(PDO::FETCH_ASSOC);
@@ -133,7 +133,7 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
             LEFT JOIN departures d ON t.tour_id = d.tour_id
             WHERE t.status = 'active'
         ";
-        
+
         $params = [];
 
         if (!empty($search_term)) {
@@ -179,7 +179,8 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
 
     public function getDepartures()
     {
-        if (ob_get_length()) ob_clean();
+        if (ob_get_length())
+            ob_clean();
         header('Content-Type: application/json; charset=utf-8');
 
         $tour_id = isset($_GET['tour_id']) ? intval($_GET['tour_id']) : 0;
@@ -222,226 +223,135 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
         require __DIR__ . '/../views/booking.php';
     }
 
-   public function confirmBooking()
-{
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // --- HÀM TẠO ĐƠN HÀNG (CÓ CHỐNG LỖI VÀ BÁO CHUÔNG ĐƠN MỚI) ---
+    public function confirmBooking()
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-        $tour_id = $_POST['tour_id'] ?? 0;
-        $departure_id = $_POST['departure_id'] ?? 0;
-        $customer_name = trim($_POST['customer_name'] ?? '');
-        $email = trim($_POST['email'] ?? '');
-        $phone = trim($_POST['phone'] ?? '');
-        $people = (int)($_POST['people'] ?? 1);
-        $note = trim($_POST['note'] ?? '');
-        $payment_method = $_POST['payment_method'] ?? 'cod';
+            $tour_id = $_POST['tour_id'] ?? 0;
+            $departure_id = $_POST['departure_id'] ?? 0;
+            $customer_name = trim($_POST['customer_name'] ?? '');
+            $email = trim($_POST['email'] ?? '');
+            $phone = trim($_POST['phone'] ?? '');
+            $people = (int) ($_POST['people'] ?? 1);
+            $note = trim($_POST['note'] ?? '');
+            $payment_method = $_POST['payment_method'] ?? 'cod';
 
-        $pickup_type = $_POST['pickup_type'] ?? 'meeting_point';
-        $raw_address = trim($_POST['pickup_address'] ?? '');
+            $pickup_type = $_POST['pickup_type'] ?? 'meeting_point';
+            $raw_address = trim($_POST['pickup_address'] ?? '');
 
-        // Xử lý điểm đón
-        if ($pickup_type === 'hotel') {
-            $final_pickup = "Đón Khách sạn: " . $raw_address;
-        } elseif ($pickup_type === 'other') {
-            $final_pickup = "Khách Tỉnh (SB/BX): " . $raw_address;
-        } else {
-            $final_pickup = "Tự đến Điểm hẹn tập trung";
-        }
-
-        try {
-
-            $this->db->beginTransaction();
-
-            // Trừ ghế
-            $queryUpdateSeats = "
-                UPDATE departures
-                SET available_seats = available_seats - ?,
-                    booked_seats = booked_seats + ?
-                WHERE departure_id = ?
-                AND available_seats >= ?
-            ";
-
-            $stmtUpdateSeats = $this->db->prepare($queryUpdateSeats);
-            $stmtUpdateSeats->execute([
-                $people,
-                $people,
-                $departure_id,
-                $people
-            ]);
-
-            if ($stmtUpdateSeats->rowCount() === 0) {
-                throw new Exception("Chuyến đi không còn đủ chỗ!");
-            }
-
-            // Lấy giá + phần trăm giảm giá
-            $stmt = $this->db->prepare("
-                SELECT price,
-                       discount_percent
-                FROM tours
-                WHERE tour_id = ?
-            ");
-
-            $stmt->execute([$tour_id]);
-            $tour = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if (!$tour) {
-                throw new Exception("Không tìm thấy tour");
-            }
-
-            $price = (float)$tour['price'];
-            $discount = (float)($tour['discount_percent'] ?? 0);
-
-            // Tính giá sau giảm
-            $discountedPrice = $price;
-
-            if ($discount > 0) {
-                $discountedPrice = $price - ($price * $discount / 100);
-            }
-
-            // Tổng tiền
-            $total_price = $discountedPrice * $people;
-
-            $user_id = $_SESSION['user']['user_id'] ?? 1;
-
-            // Lưu booking
-            $query = "
-                INSERT INTO bookings (
-                    user_id,
-                    departure_id,
-                    customer_name,
-                    email,
-                    phone,
-                    pickup_address,
-                    number_of_people,
-                    total_price,
-                    note,
-                    status
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-            ";
-
-            $stmtInsert = $this->db->prepare($query);
-
-            $stmtInsert->execute([
-                $user_id,
-                $departure_id,
-                $customer_name,
-                $email,
-                $phone,
-                $final_pickup,
-                $people,
-                $total_price,
-                $note
-            ]);
-
-            $booking_id = $this->db->lastInsertId();
-
-            // Tạo payment
-            if ($payment_method === 'qr') {
-
-                $transaction_code = "TXN" . time() . rand(100,999);
-
-                $stmtPay = $this->db->prepare("
-                    INSERT INTO payments(
-                        booking_id,
-                        amount,
-                        payment_method,
-                        payment_status,
-                        transaction_code
-                    )
-                    VALUES(
-                        ?,
-                        ?,
-                        'qr',
-                        'pending',
-                        ?
-                    )
-                ");
-
-                $stmtPay->execute([
-                    $booking_id,
-                    $total_price,
-                    $transaction_code
-                ]);
-
-                $payment_id = $this->db->lastInsertId();
-
+            // Xử lý điểm đón
+            if ($pickup_type === 'hotel') {
+                $final_pickup = "Đón Khách sạn: " . $raw_address;
+            } elseif ($pickup_type === 'other') {
+                $final_pickup = "Khách Tỉnh (SB/BX): " . $raw_address;
             } else {
-
-                $stmtPay = $this->db->prepare("
-                    INSERT INTO payments(
-                        booking_id,
-                        amount,
-                        payment_method,
-                        payment_status
-                    )
-                    VALUES(
-                        ?,
-                        ?,
-                        'cod',
-                        'pending'
-                    )
-                ");
-
-                $stmtPay->execute([
-                    $booking_id,
-                    $total_price
-                ]);
+                $final_pickup = "Tự đến Điểm hẹn tập trung";
             }
 
-            $this->db->commit();
-
-            // Pusher admin
             try {
+                $this->db->beginTransaction();
 
-                require_once __DIR__.'/../config/pusher_helper.php';
+                // TRỪ GHẾ NGAY KHI KHÁCH ĐẶT (GIỮ CHỖ)
+                $queryUpdateSeats = "
+                    UPDATE departures
+                    SET available_seats = available_seats - ?,
+                        booked_seats = booked_seats + ?
+                    WHERE departure_id = ?
+                    AND available_seats >= ?
+                ";
 
-                $pusher = getPusherInstance();
+                $stmtUpdateSeats = $this->db->prepare($queryUpdateSeats);
+                $stmtUpdateSeats->execute([$people, $people, $departure_id, $people]);
 
-                $pusher->trigger(
-                    'admin-channel',
-                    'new-booking',
-                    [
-                        'booking_id'=>str_pad($booking_id,6,'0',STR_PAD_LEFT),
-                        'customer_name'=>$customer_name,
-                        'message'=>"🎉 Khách hàng {$customer_name} vừa đặt đơn #".str_pad($booking_id,6,'0',STR_PAD_LEFT)
-                    ]
-                );
+                if ($stmtUpdateSeats->rowCount() === 0) {
+                    throw new Exception("Chuyến đi không còn đủ chỗ!");
+                }
 
-            } catch(Exception $e){
-                error_log($e->getMessage());
+                // Lấy giá + phần trăm giảm giá
+                $stmt = $this->db->prepare("SELECT price, discount_percent FROM tours WHERE tour_id = ?");
+                $stmt->execute([$tour_id]);
+                $tour = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$tour) {
+                    throw new Exception("Không tìm thấy tour");
+                }
+
+                $price = (float) $tour['price'];
+                $discount = (float) ($tour['discount_percent'] ?? 0);
+
+                // Tính giá sau giảm
+                $discountedPrice = $price;
+                if ($discount > 0) {
+                    $discountedPrice = $price - ($price * $discount / 100);
+                }
+
+                // Tổng tiền
+                $total_price = $discountedPrice * $people;
+                $user_id = $_SESSION['user']['user_id'] ?? 1;
+
+                // Lưu booking
+                $query = "
+                    INSERT INTO bookings (
+                        user_id, departure_id, customer_name, email, phone, pickup_address, number_of_people, total_price, note, status
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+                ";
+                $stmtInsert = $this->db->prepare($query);
+                $stmtInsert->execute([$user_id, $departure_id, $customer_name, $email, $phone, $final_pickup, $people, $total_price, $note]);
+
+                $booking_id = $this->db->lastInsertId();
+
+                // Tạo payment
+                if ($payment_method === 'qr') {
+                    $transaction_code = "TXN" . time() . rand(100, 999);
+                    $stmtPay = $this->db->prepare("
+                        INSERT INTO payments(booking_id, amount, payment_method, payment_status, transaction_code)
+                        VALUES(?, ?, 'qr', 'pending', ?)
+                    ");
+                    $stmtPay->execute([$booking_id, $total_price, $transaction_code]);
+                    $payment_id = $this->db->lastInsertId();
+                } else {
+                    $stmtPay = $this->db->prepare("
+                        INSERT INTO payments(booking_id, amount, payment_method, payment_status)
+                        VALUES(?, ?, 'cod', 'pending')
+                    ");
+                    $stmtPay->execute([$booking_id, $total_price]);
+                }
+
+                // 🔥 LƯU DATABASE: GỬI CHUÔNG BÁO CHO ADMIN CÓ ĐƠN MỚI 🔥
+                $link_admin = "manager.php?action=bookingDetail&id=" . $booking_id;
+                $message_admin = "🛒 Có khách hàng vừa đặt đơn mới (#" . str_pad($booking_id, 6, '0', STR_PAD_LEFT) . "). Đang chờ thanh toán.";
+                $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Đơn Hàng', ?, ?)")
+                    ->execute([$booking_id, $link_admin, $message_admin]);
+
+                $this->db->commit();
+
+                // Chuyển hướng
+                if ($payment_method === 'qr') {
+                    header(
+                        "Location:index.php?action=payment&payment_id="
+                        . encode_id($payment_id)
+                        . "&booking_id="
+                        . encode_id($booking_id)
+                    );
+                } else {
+                    $_SESSION['success'] = "Đặt tour thành công!";
+                    header("Location:index.php?action=myBookings");
+                }
+                exit;
+
+            } catch (Exception $e) {
+                $this->db->rollBack();
+                echo "<script>
+                    alert('" . $e->getMessage() . "');
+                    history.back();
+                </script>";
+                exit;
             }
-
-            // Chuyển hướng
-            if($payment_method==='qr'){
-
-                header(
-                    "Location:index.php?action=payment&payment_id="
-                    .encode_id($payment_id)
-                    ."&booking_id="
-                    .encode_id($booking_id)
-                );
-
-            } else {
-
-                $_SESSION['success']="Đặt tour thành công!";
-                header("Location:index.php?action=myBookings");
-
-            }
-
-            exit;
-
-        } catch(Exception $e){
-
-            $this->db->rollBack();
-
-            echo "<script>
-                alert('".$e->getMessage()."');
-                history.back();
-            </script>";
-            exit;
         }
     }
-}
+
     public function myBookings()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -510,17 +420,17 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
         require __DIR__ . '/../views/booking_detail.php';
     }
 
-    // ================= XỬ LÝ YÊU CẦU HỦY & HOÀN TIỀN TỪ KHÁCH HÀNG =================
+    // --- XỬ LÝ KHÁCH HÀNG TỰ BẤM HỦY ĐƠN ---
     public function requestCancel()
     {
-        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (session_status() === PHP_SESSION_NONE)
+            session_start();
         if (!isset($_SESSION['user'])) {
             header("Location: index.php?action=login");
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            // Giải mã ID
             $hash_id = $_POST['booking_id'] ?? '';
             $booking_id = decode_id($hash_id);
             $user_id = $_SESSION['user']['user_id'] ?? $_SESSION['user']['id'];
@@ -530,7 +440,6 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
                 exit;
             }
 
-            // 1. Lấy thông tin đơn hàng
             $stmt = $this->db->prepare("
                 SELECT b.status, b.note, b.customer_name, b.number_of_people, b.departure_id, p.payment_status, d.start_date 
                 FROM bookings b 
@@ -546,7 +455,6 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
                 exit;
             }
 
-            // 2. Kiểm tra ràng buộc thời gian (Hủy dưới 7 ngày không cho phép)
             $days_until_start = floor((strtotime($booking['start_date']) - time()) / (60 * 60 * 24));
             if ($days_until_start < 7) {
                 echo "<script>
@@ -556,16 +464,14 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
                 exit;
             }
 
-            // 3. Gom dữ liệu Lý do hủy & Thông tin nhận tiền hoàn từ Form
             $reason = $_POST['cancel_reason'] ?? 'Không rõ lý do';
             $cancel_note = $_POST['cancel_note'] ?? '';
-            
+
             $cancelInfo = "LÝ DO HỦY: $reason.";
             if (!empty($cancel_note)) {
                 $cancelInfo .= " Ghi chú thêm: $cancel_note.";
             }
 
-            // Nếu khách đã trả tiền thì lấy thêm thông tin ngân hàng
             if (($booking['payment_status'] ?? '') === 'paid') {
                 $bank_name = $_POST['bank_name'] ?? '';
                 $bank_account = $_POST['bank_account'] ?? '';
@@ -573,34 +479,22 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
                 $cancelInfo .= "\nTHÔNG TIN NHẬN HOÀN TIỀN: Ngân hàng $bank_name, STK: $bank_account, Chủ thẻ: $account_holder.";
             }
 
-            // Nối thông tin hủy vào cột Note cũ của đơn hàng
             $oldNote = !empty($booking['note']) ? $booking['note'] . "\n\n" : "";
             $finalNote = $oldNote . "--- YÊU CẦU HỦY BỞI KHÁCH HÀNG ---\n" . $cancelInfo;
 
-            // 4. Thực hiện Update Hủy Đơn & Lưu Ghi chú
             $stmtUpdate = $this->db->prepare("UPDATE bookings SET status = 'cancelled', note = ? WHERE booking_id = ?");
             if ($stmtUpdate->execute([$finalNote, $booking_id])) {
-                
-                // 5. Hoàn lại số ghế trống vào bảng departures
-                $queryRestoreSeats = "UPDATE departures SET available_seats = available_seats + ? WHERE departure_id = ?";
-                $this->db->prepare($queryRestoreSeats)->execute([$booking['number_of_people'], $booking['departure_id']]);
 
-                // 6. REALTIME PUSHER: Thông báo cho Admin có đơn bị hủy
-                try {
-                    require_once __DIR__ . '/../vendor/autoload.php';
-                    $options = array('cluster' => 'ap1', 'useTLS' => true);
-                    $pusher = new Pusher\Pusher('e5405b1b2139fed6f8bc', '2f482d4b39a5f0acd508', '2149497', $options);
+                // ĐÃ SỬA CHỖ NÀY: Vừa cộng lại ghế trống, vừa trừ đi ghế đã đặt
+                $queryRestoreSeats = "UPDATE departures SET available_seats = available_seats + ?, booked_seats = booked_seats - ? WHERE departure_id = ?";
+                $this->db->prepare($queryRestoreSeats)->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
 
-                    $data = [
-                        'booking_id' => str_pad($booking_id, 6, '0', STR_PAD_LEFT),
-                        'customer_name' => $booking['customer_name'],
-                        'message' => "🚨 Yêu cầu hủy đơn hàng #" . str_pad($booking_id, 6, '0', STR_PAD_LEFT) . " từ khách " . $booking['customer_name']
-                    ];
-                    // Bắn vào kênh admin để hiện thông báo Toast
-                    $pusher->trigger('admin-channel', 'cancel-request', $data);
-                } catch (Exception $e) { }
+                // 🔥 LƯU DATABASE: GỬI CHUÔNG BÁO CHO ADMIN KHÁCH HỦY ĐƠN 🔥
+                $link_admin = "manager.php?action=bookingDetail&id=" . $booking_id;
+                $message_admin = "🚨 Khách hàng " . $booking['customer_name'] . " vừa gửi yêu cầu tự hủy đơn hàng #" . str_pad($booking_id, 6, '0', STR_PAD_LEFT);
+                $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
+                    ->execute([$booking_id, $link_admin, $message_admin]);
 
-                // 7. Thông báo thành công cho khách hàng
                 if (($booking['payment_status'] ?? '') === 'paid') {
                     echo "<script>alert('Yêu cầu hủy thành công. Hệ thống đã ghi nhận thông tin tài khoản, kế toán sẽ xử lý hoàn tiền trong 3-5 ngày làm việc.'); window.location.href='index.php?action=myBookings';</script>";
                 } else {
@@ -611,6 +505,8 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
             }
         }
     }
+
+    // --- HỆ THỐNG TỰ ĐỘNG HỦY ĐƠN TREO ---
     private function autoCancelExpiredBookings()
     {
         $query = "SELECT b.booking_id, b.departure_id, b.number_of_people 
@@ -626,14 +522,21 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
         $expiredBookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($expiredBookings as $b) {
-            $stmtRestore = $this->db->prepare("UPDATE departures SET available_seats = available_seats + ? WHERE departure_id = ?");
-            $stmtRestore->execute([$b['number_of_people'], $b['departure_id']]);
+            // ĐÃ SỬA CHỖ NÀY: Vừa cộng lại ghế trống, vừa trừ đi ghế đã đặt
+            $stmtRestore = $this->db->prepare("UPDATE departures SET available_seats = available_seats + ?, booked_seats = booked_seats - ? WHERE departure_id = ?");
+            $stmtRestore->execute([$b['number_of_people'], $b['number_of_people'], $b['departure_id']]);
 
             $stmtCancelB = $this->db->prepare("UPDATE bookings SET status = 'cancelled', note = CONCAT(IFNULL(note,''), 'Đã hủy do hết thời gian thanh toán') WHERE booking_id = ?");
             $stmtCancelB->execute([$b['booking_id']]);
 
             $stmtCancelP = $this->db->prepare("UPDATE payments SET payment_status = 'failed' WHERE booking_id = ?");
             $stmtCancelP->execute([$b['booking_id']]);
+
+            // 🔥 LƯU DATABASE: GỬI CHUÔNG BÁO CHO ADMIN ĐƠN HẾT HẠN 🔥
+            $link_admin = "manager.php?action=bookingDetail&id=" . $b['booking_id'];
+            $message_admin = "⚠️ Đơn hàng #" . str_pad($b['booking_id'], 6, '0', STR_PAD_LEFT) . " đã tự động bị hủy do quá hạn 15 phút chưa thanh toán.";
+            $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
+                ->execute([$b['booking_id'], $link_admin, $message_admin]);
         }
     }
 
@@ -672,10 +575,28 @@ $bestSellerTours = $stmtBest->fetchAll(PDO::FETCH_ASSOC);
         require __DIR__ . '/../views/blogs.php';
     }
 
-    public function about() { require __DIR__ . '/../views/about.php'; }
-    public function careers() { require __DIR__ . '/../views/careers.php'; }
-    public function affiliate() { require __DIR__ . '/../views/affiliate.php'; }
-    public function guidePage() { require __DIR__ . '/../views/guide_page.php'; }
-    public function faq() { require __DIR__ . '/../views/faq.php'; }
-    public function policy() { require __DIR__ . '/../views/policy.php'; }
+    public function about()
+    {
+        require __DIR__ . '/../views/about.php';
+    }
+    public function careers()
+    {
+        require __DIR__ . '/../views/careers.php';
+    }
+    public function affiliate()
+    {
+        require __DIR__ . '/../views/affiliate.php';
+    }
+    public function guidePage()
+    {
+        require __DIR__ . '/../views/guide_page.php';
+    }
+    public function faq()
+    {
+        require __DIR__ . '/../views/faq.php';
+    }
+    public function policy()
+    {
+        require __DIR__ . '/../views/policy.php';
+    }
 }

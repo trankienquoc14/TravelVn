@@ -256,6 +256,9 @@ if (isset($_SESSION['user'])) {
                                                 if ($notif['type'] == 'Thanh Toán') {
                                                     $bgClass = 'bg-success';
                                                     $icon = 'bi-currency-dollar';
+                                                } elseif ($notif['type'] == 'Xác Nhận') { // 🔥 THÊM LOẠI NÀY
+                                                    $bgClass = 'bg-success';
+                                                    $icon = 'bi-check-circle';
                                                 } elseif ($notif['type'] == 'Hủy Đơn') {
                                                     $bgClass = 'bg-danger';
                                                     $icon = 'bi-x-circle';

@@ -17,7 +17,7 @@ class PaymentController
     // Hàm tạo mã QR 
     public function createQR($amount, $info)
     {
-        $bank = "Sacombank"; 
+        $bank = "Sacombank";
         $account = $this->accountNumber;
         $name = "CONG TY DU LICH TRAVELVN";
 
@@ -31,14 +31,14 @@ class PaymentController
         return $qr_url;
     }
 
-    // --- HÀM XỬ LÝ HỦY ĐƠN & HOÀN TRẢ GHẾ ---
+    // --- HÀM XỬ LÝ HỦY ĐƠN & HOÀN TRẢ GHẾ (15 PHÚT HẾT HẠN) ---
     public function cancelBooking()
     {
         header('Content-Type: application/json');
 
-        // Nhận ID từ JS (có thể là mã băm hoặc số)
+        // Nhận ID từ JS
         $hash_id = $_POST['payment_id'] ?? '';
-        $payment_id = is_numeric($hash_id) ? (int)$hash_id : decode_id($hash_id);
+        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
 
         if ($payment_id <= 0) {
             echo json_encode(["status" => "error", "message" => "Mã thanh toán không hợp lệ!"]);
@@ -50,7 +50,7 @@ class PaymentController
                 SELECT p.payment_status, b.booking_id, b.departure_id, b.number_of_people 
                 FROM payments p
                 JOIN bookings b ON p.booking_id = b.booking_id
-                WHERE p.payment_id = ?
+                WHERE p.payment_id = ? FOR UPDATE
             ");
             $stmt->execute([$payment_id]);
             $info = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -60,18 +60,22 @@ class PaymentController
                 exit;
             }
 
-            // Đơn pending chưa trừ ghế nên khi hủy KHÔNG ĐƯỢC cộng ghế
             if ($info['payment_status'] === 'pending') {
                 $this->db->beginTransaction();
 
+                // 1. 🔥 ĐÃ SỬA: HỦY ĐƠN THÌ PHẢI HOÀN LẠI GHẾ (Vì lúc đặt đã trừ ghế rồi)
+                $this->db->prepare("UPDATE departures SET available_seats = available_seats + ?, booked_seats = booked_seats - ? WHERE departure_id = ?")
+                    ->execute([$info['number_of_people'], $info['number_of_people'], $info['departure_id']]);
+
+                // 2. Cập nhật trạng thái Hủy
                 $this->db->prepare("UPDATE payments SET payment_status = 'cancelled' WHERE payment_id = ?")->execute([$payment_id]);
                 $this->db->prepare("UPDATE bookings SET status = 'cancelled' WHERE booking_id = ?")->execute([$info['booking_id']]);
 
-                // Lưu thông báo Hủy đơn vào Database
-                $message = "⚠️ Khách hàng đã không hoàn tất thanh toán (Hết hạn 15 phút). Đơn #" . $info['booking_id'] . " đã bị hủy.";
+                // 3. Lưu thông báo Hủy đơn vào Database báo cho Admin
+                $message = "⚠️ Khách hàng đã không hoàn tất thanh toán (Hết hạn 15 phút). Đơn #" . str_pad($info['booking_id'], 6, '0', STR_PAD_LEFT) . " đã bị hủy.";
                 $link = "manager.php?action=bookingDetail&id=" . $info['booking_id'];
                 $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
-                         ->execute([$info['booking_id'], $link, $message]);
+                    ->execute([$info['booking_id'], $link, $message]);
 
                 $this->db->commit();
                 echo json_encode(["status" => "success", "message" => "Đã hủy đơn thành công"]);
@@ -88,10 +92,10 @@ class PaymentController
     public function payment()
     {
         $hash_id = $_GET['payment_id'] ?? '';
-        $payment_id = is_numeric($hash_id) ? (int)$hash_id : decode_id($hash_id);
+        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
 
         $booking_hash = $_GET['booking_id'] ?? '';
-        $booking_id = !empty($booking_hash) ? (is_numeric($booking_hash) ? (int)$booking_hash : decode_id($booking_hash)) : 0;
+        $booking_id = !empty($booking_hash) ? (is_numeric($booking_hash) ? (int) $booking_hash : decode_id($booking_hash)) : 0;
 
         if ($payment_id === 0 && $booking_id > 0) {
             $stmtFind = $this->db->prepare("SELECT payment_id FROM payments WHERE booking_id = ? LIMIT 1");
@@ -127,13 +131,13 @@ class PaymentController
         require __DIR__ . '/../views/payment.php';
     }
 
-    // --- ĐÂY LÀ HÀM QUAN TRỌNG NHẤT: THAY THẾ WEBHOOK ---
+    // --- KIỂM TRA THANH TOÁN (WEBHOOK TỰ CHẾ) ---
     public function checkPaymentStatus()
     {
         header('Content-Type: application/json');
 
         $hash_id = $_GET['payment_id'] ?? '';
-        $payment_id = is_numeric($hash_id) ? (int)$hash_id : decode_id($hash_id);
+        $payment_id = is_numeric($hash_id) ? (int) $hash_id : decode_id($hash_id);
 
         if ($payment_id <= 0) {
             echo json_encode(["status" => "error", "message" => "Invalid Payment ID"]);
@@ -172,7 +176,7 @@ class PaymentController
         if (isset($result['transactions'])) {
             foreach ($result['transactions'] as $trans) {
                 $content = strtoupper($trans['content'] ?? $trans['transaction_content'] ?? '');
-                
+
                 $search = "THANHTOAN" . $payment_id;
                 $cleanContent = str_replace(' ', '', $content);
 
@@ -191,7 +195,7 @@ class PaymentController
                 $stmt = $this->db->prepare("UPDATE payments SET payment_status = 'paid' WHERE payment_id = ?");
                 $stmt->execute([$payment_id]);
 
-                // Lấy thông tin đơn hàng để xử lý ghế và thông báo
+                // Lấy thông tin đơn hàng
                 $stmtPay = $this->db->prepare("
                     SELECT b.booking_id, b.number_of_people, b.departure_id 
                     FROM payments p
@@ -205,24 +209,15 @@ class PaymentController
                     // 1. Xác nhận đơn hàng
                     $this->db->prepare("UPDATE bookings SET status = 'confirmed' WHERE booking_id = ?")
                         ->execute([$payData['booking_id']]);
-                    
-                    // 2. 🔥 CẬP NHẬT GHẾ VÀO CƠ SỞ DỮ LIỆU
-                    $this->db->prepare("
-                        UPDATE departures 
-                        SET booked_seats = booked_seats + ?, 
-                            available_seats = available_seats - ? 
-                        WHERE departure_id = ?
-                    ")->execute([
-                        $payData['number_of_people'], 
-                        $payData['number_of_people'], 
-                        $payData['departure_id']
-                    ]);
 
-                    // 3. 🔥 LƯU THÔNG BÁO VÀO DATABASE CHO ADMIN
-                    $message = "💰 Ting ting! Khách hàng vừa chuyển khoản thành công đơn #" . $payData['booking_id'];
+                    // 🔥 ĐÃ SỬA: Xóa bỏ lệnh UPDATE departures trừ ghế ở đây!
+                    // Vì ghế đã được trừ ngay từ lúc khách bấm "Đặt tour" ở TourController rồi.
+
+                    // 2. 🔥 LƯU THÔNG BÁO VÀO DATABASE CHO ADMIN
+                    $message = "💰 Ting ting! Khách hàng vừa chuyển khoản thành công đơn #" . str_pad($payData['booking_id'], 6, '0', STR_PAD_LEFT);
                     $link = "manager.php?action=bookingDetail&id=" . $payData['booking_id'];
                     $type = "Thanh Toán";
-                    
+
                     $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, ?, ?, ?)");
                     $stmtNotif->execute([$payData['booking_id'], $type, $link, $message]);
                 }
