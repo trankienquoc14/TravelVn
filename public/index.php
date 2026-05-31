@@ -17,6 +17,28 @@ require_once '../controllers/ChatController.php';
 $action = $_GET['action'] ?? 'home';
 
 // 4. Phân luồng Controller
+// 🔥 BỔ SUNG: XỬ LÝ API NGẦM ĐÁNH DẤU ĐÃ ĐỌC THÔNG BÁO CHUÔNG
+if ($action === 'markNotifRead') {
+    require_once '../config/database.php';
+    $db = (new Database())->connect();
+
+    $role = $_SESSION['user']['role'] ?? '';
+    $uid = $_SESSION['user']['user_id'] ?? 0;
+
+    // Nếu là Admin thì đánh dấu đọc các thông báo hệ thống (user_id IS NULL)
+    if ($role === 'admin' || $role === 'tour_manager') {
+        $db->query("UPDATE notifications SET is_read = 1 WHERE user_id IS NULL");
+    } elseif ($uid > 0) {
+        // Khách hàng thì chỉ đánh dấu đọc thông báo của riêng họ
+        $stmt = $db->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?");
+        $stmt->execute([$uid]);
+    }
+
+    // Trả về JSON và kết thúc luồng, không load giao diện
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'success']);
+    exit;
+}
 if ($action === 'payment' || $action === 'confirmPayment' || $action === 'webhook' || $action === 'checkPaymentStatus' || $action === 'cancelBooking') {
     $c = new PaymentController();
 } elseif ($action === 'login' || $action === 'register' || $action === 'logout' || $action === 'profile' || $action === 'updateProfile' || $action === 'updatePassword') {

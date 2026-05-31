@@ -256,7 +256,7 @@ if (isset($_SESSION['user'])) {
                                                 if ($notif['type'] == 'Thanh Toán') {
                                                     $bgClass = 'bg-success';
                                                     $icon = 'bi-currency-dollar';
-                                                } elseif ($notif['type'] == 'Xác Nhận') { // 🔥 THÊM LOẠI NÀY
+                                                } elseif ($notif['type'] == 'Xác Nhận') {
                                                     $bgClass = 'bg-success';
                                                     $icon = 'bi-check-circle';
                                                 } elseif ($notif['type'] == 'Hủy Đơn') {
@@ -265,6 +265,9 @@ if (isset($_SESSION['user'])) {
                                                 } elseif ($notif['type'] == 'Đơn Hàng') {
                                                     $bgClass = 'bg-warning text-dark';
                                                     $icon = 'bi-cart-check';
+                                                } elseif ($notif['type'] == 'Tin nhắn') {
+                                                    $bgClass = 'bg-info';
+                                                    $icon = 'bi-chat-dots';
                                                 }
                                                 ?>
                                                 <div class="rounded-circle <?= $bgClass ?> text-white d-flex align-items-center justify-content-center shadow-sm"
@@ -402,5 +405,18 @@ if (isset($_SESSION['user'])) {
                 }
             }
         }
+
+        // TẮT SỐ ĐỎ VÀ ĐÁNH DẤU ĐÃ XEM KHI CLICK VÀO CHUÔNG
+        document.getElementById('notifDropdown')?.addEventListener('click', function () {
+            let badge = document.getElementById('global-notif-badge');
+            // Nếu có số lượng chưa đọc đang hiển thị
+            if (badge && !badge.classList.contains('d-none')) {
+                badge.classList.add('d-none'); // Ẩn ngay lập tức trên UI
+                badge.innerText = '0';
+
+                // Bắn API ngầm xuống PHP để cập nhật is_read = 1 trong Database
+                fetch('index.php?action=markNotifRead').catch(e => console.log(e));
+            }
+        });
     </script>
     <div class="main-content">
