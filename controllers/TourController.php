@@ -324,6 +324,13 @@ class TourController
                 $message_admin = "🛒 Có khách hàng vừa đặt đơn mới (#" . str_pad($booking_id, 6, '0', STR_PAD_LEFT) . "). Đang chờ thanh toán.";
                 $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Đơn Hàng', ?, ?)")
                     ->execute([$booking_id, $link_admin, $message_admin]);
+                // 🔥 THÊM ĐOẠN NÀY ĐỂ KÊU TING TING
+                $_SESSION['realtime_notify'] = [
+                    'target_role' => 'admin_group',
+                    'type' => 'Đơn Hàng',
+                    'title' => 'Đơn hàng mới',
+                    'message' => $message_admin
+                ];
 
                 $this->db->commit();
 
@@ -494,6 +501,13 @@ class TourController
                 $message_admin = "🚨 Khách hàng " . $booking['customer_name'] . " vừa gửi yêu cầu tự hủy đơn hàng #" . str_pad($booking_id, 6, '0', STR_PAD_LEFT);
                 $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
                     ->execute([$booking_id, $link_admin, $message_admin]);
+                // 🔥 THÊM ĐOẠN NÀY ĐỂ KÊU TING TING
+                $_SESSION['realtime_notify'] = [
+                    'target_role' => 'admin_group',
+                    'type' => 'Hủy Đơn',
+                    'title' => 'Yêu cầu hủy',
+                    'message' => $message_admin
+                ];
 
                 if (($booking['payment_status'] ?? '') === 'paid') {
                     echo "<script>alert('Yêu cầu hủy thành công. Hệ thống đã ghi nhận thông tin tài khoản, kế toán sẽ xử lý hoàn tiền trong 3-5 ngày làm việc.'); window.location.href='index.php?action=myBookings';</script>";
@@ -537,6 +551,13 @@ class TourController
             $message_admin = "⚠️ Đơn hàng #" . str_pad($b['booking_id'], 6, '0', STR_PAD_LEFT) . " đã tự động bị hủy do quá hạn 15 phút chưa thanh toán.";
             $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, 'Hủy Đơn', ?, ?)")
                 ->execute([$b['booking_id'], $link_admin, $message_admin]);
+            // 🔥 THÊM ĐOẠN NÀY ĐỂ KÊU TING TING
+            $_SESSION['realtime_notify'] = [
+                'target_role' => 'admin_group',
+                'type' => 'Hủy Đơn',
+                'title' => 'Hệ thống tự động hủy',
+                'message' => $message_admin
+            ];
         }
     }
 

@@ -926,3 +926,19 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         updateCustomerChatBadge();
     });
 </script>
+<?php if (!empty($_SESSION['realtime_notify'])): ?>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            setTimeout(function () {
+                if (typeof window.globalSocket !== 'undefined') {
+                    // Lấy thông báo từ PHP Session và bắn thẳng lên máy chủ Socket
+                    window.globalSocket.emit("send_notification", <?= json_encode($_SESSION['realtime_notify']) ?>);
+                }
+            }, 800); // Đợi 0.8s cho kết nối mạng ổn định rồi mới bắn
+        });
+    </script>
+    <?php
+    // Bắn xong thì xóa đi để không bị kêu lại khi F5
+    unset($_SESSION['realtime_notify']);
+endif;
+?>
