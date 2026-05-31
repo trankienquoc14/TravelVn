@@ -228,23 +228,33 @@ include __DIR__ . '/../layouts/header.php';
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Trạng thái chuyến đi</label>
-                                <select name="status" class="form-select fw-bold" <?= $isCompletedByDate ? 'disabled' : '' ?>>
-    <option value="upcoming" <?= $departure['status'] == 'upcoming' ? 'selected' : '' ?>>
-        Đang mở bán
-    </option>
-    <option value="closed" <?= $departure['status'] == 'closed' ? 'selected' : '' ?>>
-        Đóng / Chốt sổ
-    </option>
-</select>
+    <label class="form-label">Trạng thái chuyến đi</label>
 
-<?php if ($isCompletedByDate): ?>
-    <input type="hidden" name="status" value="<?= htmlspecialchars($departure['status']) ?>">
-    <div class="small text-muted mt-2">
-        Trạng thái bán đã bị khóa vì chuyến đi đã kết thúc.
+    <?php if ($isCompletedByDate): ?>
+    <div class="form-control fw-bold d-flex align-items-center"
+         style="background:#f1f5f9; cursor:not-allowed;">
+        <span class="status-pill status-completed">
+            <i class="bi bi-check-circle-fill"></i>
+            Đã hoàn thành
+        </span>
     </div>
+
+    <input type="hidden" name="status" value="completed">
+
+    <div class="small text-muted mt-2">
+        Chuyến đi đã kết thúc theo ngày thực tế nên trạng thái được tự động ghi nhận là Đã hoàn thành.
+    </div>
+<?php else: ?>
+    <select name="status" class="form-select fw-bold">
+        <option value="upcoming" <?= $departure['status'] == 'upcoming' ? 'selected' : '' ?>>
+            Đang mở bán
+        </option>
+        <option value="closed" <?= $departure['status'] == 'closed' ? 'selected' : '' ?>>
+            Đóng / Chốt sổ
+        </option>
+    </select>
 <?php endif; ?>
-                            </div>
+</div>
                         </div>
                     </div>
 
