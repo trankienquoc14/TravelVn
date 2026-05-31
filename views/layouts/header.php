@@ -220,6 +220,27 @@ if (isset($_SESSION['user'])) {
                         </a>
                     </li>
 
+                    <li class="nav-item me-3">
+                        <?php
+                        $role = $_SESSION['user']['role'] ?? 'customer';
+                        $supportLink = 'javascript:void(0);';
+                        $onClick = 'toggleChat()';
+
+                        if ($role == 'admin') {
+                            $supportLink = 'admin.php?action=chat';
+                            $onClick = '';
+                        } elseif ($role == 'tour_manager') {
+                            $supportLink = 'manager.php?action=chat';
+                            $onClick = '';
+                        } elseif ($role == 'guide') {
+                            $supportLink = 'guide.php?action=chat';
+                            $onClick = '';
+                        }
+                        ?>
+                        <a class="nav-link nav-link-custom" href="<?= $supportLink ?>" onclick="<?= $onClick ?>">
+                            <i class="bi bi-headset me-1"></i> Hỗ trợ
+                        </a>
+                    </li>
                     <li class="nav-item dropdown position-relative mx-2 d-flex align-items-center">
                         <a class="nav-link nav-link-custom" href="#" id="notifDropdown" role="button"
                             data-bs-toggle="dropdown" aria-expanded="false" title="Thông báo hệ thống">
@@ -299,27 +320,6 @@ if (isset($_SESSION['user'])) {
                                         style="font-size: 0.9rem;">Xem tất cả</a></li>
                             <?php endif; ?>
                         </ul>
-                    </li>
-                    <li class="nav-item me-3">
-                        <?php
-                        $role = $_SESSION['user']['role'] ?? 'customer';
-                        $supportLink = 'javascript:void(0);';
-                        $onClick = 'toggleChat()';
-
-                        if ($role == 'admin') {
-                            $supportLink = 'admin.php?action=chat';
-                            $onClick = '';
-                        } elseif ($role == 'tour_manager') {
-                            $supportLink = 'manager.php?action=chat';
-                            $onClick = '';
-                        } elseif ($role == 'guide') {
-                            $supportLink = 'guide.php?action=chat';
-                            $onClick = '';
-                        }
-                        ?>
-                        <a class="nav-link nav-link-custom" href="<?= $supportLink ?>" onclick="<?= $onClick ?>">
-                            <i class="bi bi-headset me-1"></i> Hỗ trợ
-                        </a>
                     </li>
 
                     <?php if (isset($_SESSION['user'])): ?>
