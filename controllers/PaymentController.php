@@ -132,6 +132,7 @@ class PaymentController
     }
 
     // --- KIỂM TRA THANH TOÁN (WEBHOOK TỰ CHẾ) ---
+    // --- KIỂM TRA THANH TOÁN (WEBHOOK TỰ CHẾ) ---
     public function checkPaymentStatus()
     {
         header('Content-Type: application/json');
@@ -144,7 +145,30 @@ class PaymentController
             exit;
         }
 
-        // 1. Gọi API SePay
+        // 1. KẾT HỢP LẤY booking_date ĐỂ CHẶN CÁC GIAO DỊCH QUÁ KHỨ (DO RESET DATABASE)
+        $stmtCheck = $this->db->prepare("
+            SELECT p.payment_status, p.amount, b.booking_date 
+            FROM payments p
+            JOIN bookings b ON p.booking_id = b.booking_id
+            WHERE p.payment_id = ?
+        ");
+        $stmtCheck->execute([$payment_id]);
+        $payCheck = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if (!$payCheck) {
+            echo json_encode(["status" => "error", "message" => "Không tìm thấy giao dịch"]);
+            exit;
+        }
+
+        if ($payCheck['payment_status'] === 'paid') {
+            echo json_encode(["status" => "paid"]);
+            exit;
+        }
+
+        $expectedAmount = (float) $payCheck['amount'];
+        $bookingTime = strtotime($payCheck['booking_date']); // Thời điểm tạo đơn
+
+        // 2. Gọi API SePay
         $url = "https://my.sepay.vn/userapi/transactions/list?account_number=" . $this->accountNumber;
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -158,8 +182,7 @@ class PaymentController
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if ($response === false) {
-            $error_msg = curl_error($ch);
-            echo json_encode(["status" => "error", "message" => "Curl Error: " . $error_msg]);
+            echo json_encode(["status" => "error", "message" => "Curl Error: " . curl_error($ch)]);
             curl_close($ch);
             exit;
         }
@@ -176,13 +199,22 @@ class PaymentController
         if (isset($result['transactions'])) {
             foreach ($result['transactions'] as $trans) {
                 $content = strtoupper($trans['content'] ?? $trans['transaction_content'] ?? '');
+                $amount_in = (float) ($trans['amount_in'] ?? 0);
+                $transTime = strtotime($trans['transaction_date'] ?? 'now'); // Lấy thời gian khách chuyển tiền
 
-                $search = "THANHTOAN" . $payment_id;
-                $cleanContent = str_replace(' ', '', $content);
+                // 🔥 ĐIỀU KIỆN 1: GIAO DỊCH PHẢI XẢY RA SAU KHI ĐƠN HÀNG ĐƯỢC TẠO
+                if ($transTime >= $bookingTime) {
 
-                if (strpos($cleanContent, $search) !== false) {
-                    $is_paid = true;
-                    break;
+                    // 🔥 ĐIỀU KIỆN 2: ĐÚNG MÃ THANH TOÁN
+                    $pattern = '/THANHTOAN\s*0*' . $payment_id . '\b/i';
+                    if (preg_match($pattern, $content)) {
+
+                        // 🔥 ĐIỀU KIỆN 3: ĐỦ HOẶC DƯ TIỀN
+                        if ($amount_in >= $expectedAmount) {
+                            $is_paid = true;
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -191,13 +223,11 @@ class PaymentController
             try {
                 $this->db->beginTransaction();
 
-                // Cập nhật trạng thái thanh toán
                 $stmt = $this->db->prepare("UPDATE payments SET payment_status = 'paid' WHERE payment_id = ?");
                 $stmt->execute([$payment_id]);
 
-                // Lấy thông tin đơn hàng
                 $stmtPay = $this->db->prepare("
-                    SELECT b.booking_id, b.number_of_people, b.departure_id 
+                    SELECT b.booking_id, b.number_of_people, b.departure_id, b.user_id 
                     FROM payments p
                     JOIN bookings b ON p.booking_id = b.booking_id
                     WHERE p.payment_id = ?
@@ -206,20 +236,24 @@ class PaymentController
                 $payData = $stmtPay->fetch(PDO::FETCH_ASSOC);
 
                 if ($payData) {
-                    // 1. Xác nhận đơn hàng
                     $this->db->prepare("UPDATE bookings SET status = 'confirmed' WHERE booking_id = ?")
                         ->execute([$payData['booking_id']]);
 
-                    // 🔥 ĐÃ SỬA: Xóa bỏ lệnh UPDATE departures trừ ghế ở đây!
-                    // Vì ghế đã được trừ ngay từ lúc khách bấm "Đặt tour" ở TourController rồi.
-
-                    // 2. 🔥 LƯU THÔNG BÁO VÀO DATABASE CHO ADMIN
                     $message = "💰 Ting ting! Khách hàng vừa chuyển khoản thành công đơn #" . str_pad($payData['booking_id'], 6, '0', STR_PAD_LEFT);
                     $link = "manager.php?action=bookingDetail&id=" . $payData['booking_id'];
                     $type = "Thanh Toán";
 
                     $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, booking_id, type, link, message) VALUES (NULL, ?, ?, ?, ?)");
                     $stmtNotif->execute([$payData['booking_id'], $type, $link, $message]);
+
+                    if (session_status() === PHP_SESSION_NONE)
+                        session_start();
+                    $_SESSION['realtime_notify'] = [
+                        'target_role' => 'admin_group',
+                        'type' => 'Thanh Toán',
+                        'title' => 'Nhận chuyển khoản',
+                        'message' => $message
+                    ];
                 }
 
                 $this->db->commit();
