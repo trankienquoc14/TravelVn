@@ -5,12 +5,10 @@
 $groupedBookings = [];
 if (!empty($bookings)) {
     foreach ($bookings as $b) {
-        // --- SỬA Ở ĐÂY: Dùng tour_name thay vì tour_id ---
         $tourName = $b['tour_name'] ?? 'Tour không xác định';
         $startDate = $b['start_date'] ?? '';
         
-        // Tạo khóa nhóm: Tên tour + Ngày khởi hành
-        $groupKey = md5($tourName . '_' . $startDate); // Dùng md5 để tạo key mảng an toàn
+        $groupKey = md5($tourName . '_' . $startDate);
         
         if (!isset($groupedBookings[$groupKey])) {
             $groupedBookings[$groupKey] = [
@@ -25,7 +23,6 @@ if (!empty($bookings)) {
         $groupedBookings[$groupKey]['items'][] = $b;
         $groupedBookings[$groupKey]['total_bookings']++;
         
-        // Chỉ cộng doanh thu những đơn đã duyệt/hoàn thành
         if ($b['status'] == 'confirmed' || $b['status'] == 'completed') {
             $groupedBookings[$groupKey]['total_revenue'] += $b['total_price'];
         }
@@ -34,7 +31,6 @@ if (!empty($bookings)) {
 ?>  
 
 <style>
-    /* --- BIẾN MÀU & CẤU TRÚC CHUNG --- */
     :root {
         --admin-primary: #0194f3;
         --admin-success: #10b981;
@@ -52,14 +48,9 @@ if (!empty($bookings)) {
     .admin-container { max-width: 1400px; margin: 40px auto; padding: 0 15px; }
     .admin-title { font-size: 1.8rem; font-weight: 800; color: var(--admin-text-main); margin-bottom: 5px; }
     
-    /* BỘ LỌC CHUYÊN NGHIỆP */
     .filter-card {
-        background: var(--admin-surface);
-        border-radius: 16px;
-        padding: 24px;
-        border: 1px solid var(--admin-border);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-        margin-bottom: 24px;
+        background: var(--admin-surface); border-radius: 16px; padding: 24px;
+        border: 1px solid var(--admin-border); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); margin-bottom: 24px;
     }
     
     .filter-label { font-size: 0.85rem; font-weight: 700; color: var(--admin-text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -67,51 +58,25 @@ if (!empty($bookings)) {
     .form-control:focus, .form-select:focus { border-color: var(--admin-primary); background-color: #f8fafc; }
     .input-group-text { border-radius: 10px; background-color: white; border-color: var(--admin-border); color: var(--admin-text-muted); }
 
-    /* ACCORDION (NHÓM TOUR) */
-    .tour-accordion .accordion-item {
-        border: 1px solid var(--admin-border);
-        border-radius: 16px !important;
-        margin-bottom: 16px;
-        background-color: white;
-        overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-    }
-    .tour-accordion .accordion-button {
-        padding: 20px 24px;
-        background-color: white;
-        color: var(--admin-text-main);
-        box-shadow: none !important;
-    }
-    .tour-accordion .accordion-button:not(.collapsed) {
-        background-color: #f8fafc;
-        border-bottom: 1px solid var(--admin-border);
-    }
+    .tour-accordion .accordion-item { border: 1px solid var(--admin-border); border-radius: 16px !important; margin-bottom: 16px; background-color: white; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    .tour-accordion .accordion-button { padding: 20px 24px; background-color: white; color: var(--admin-text-main); box-shadow: none !important; }
+    .tour-accordion .accordion-button:not(.collapsed) { background-color: #f8fafc; border-bottom: 1px solid var(--admin-border); }
     .tour-group-title { font-size: 1.1rem; font-weight: 800; color: var(--admin-text-main); display: flex; align-items: center; gap: 10px; }
     .tour-group-meta { font-size: 0.9rem; color: var(--admin-text-muted); font-weight: 500; display: flex; gap: 20px; align-items: center; margin-top: 5px; }
     
-    /* BẢNG CHI TIẾT TRONG ACCORDION */
-    .table th {
-        background-color: #f1f5f9; color: var(--admin-text-muted); font-weight: 700;
-        text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 16px;
-        border-bottom: none; white-space: nowrap;
-    }
+    .table th { background-color: #f1f5f9; color: var(--admin-text-muted); font-weight: 700; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; padding: 16px; border-bottom: none; white-space: nowrap; }
     .table td { padding: 16px; vertical-align: middle; color: var(--admin-text-main); border-bottom: 1px solid var(--admin-border); }
     .table tbody tr:last-child td { border-bottom: none; }
     .table tbody tr:hover { background-color: #f8fafc; }
 
-    /* BADGE TRẠNG THÁI */
     .badge-status { padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.75rem; display: inline-block; min-width: 90px; text-align: center; }
     .status-pending { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
     .status-confirmed { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
     .status-cancelled { background: #fef2f2; color: #dc2626; border: 1px solid #fecdd3; }
     .status-refunded { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
-    /* NÚT THAO TÁC */
     .action-group { display: flex; gap: 8px; justify-content: center; }
-    .btn-icon {
-        width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
-        font-size: 1rem; border: none; transition: 0.2s; background: white; color: var(--admin-text-muted); text-decoration: none; border: 1px solid var(--admin-border);
-    }
+    .btn-icon { width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; border: none; transition: 0.2s; background: white; color: var(--admin-text-muted); text-decoration: none; border: 1px solid var(--admin-border); }
     .btn-icon:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.05); }
     .btn-icon-info:hover { border-color: var(--admin-info); color: var(--admin-info); background: #e0f2fe; }
     .btn-icon-success:hover { border-color: var(--admin-success); color: var(--admin-success); background: #d1fae5; }
@@ -133,7 +98,6 @@ if (!empty($bookings)) {
                 <p class="text-muted mb-0 fw-medium">Phân loại chi tiết theo từng chuyến đi và quản lý bộ lọc chuyên sâu.</p>
             </div>
 
-            <!-- BỘ LỌC TÌM KIẾM NÂNG CAO -->
             <div class="filter-card">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
@@ -164,7 +128,6 @@ if (!empty($bookings)) {
                 </div>
             </div>
 
-            <!-- DANH SÁCH TOUR ACCORDION -->
             <?php if (!empty($groupedBookings)): ?>
                 <div class="accordion tour-accordion" id="tourAccordion">
                     
@@ -181,7 +144,6 @@ if (!empty($bookings)) {
                                         </div>
                                         <div class="tour-group-meta">
                                             <span><i class="bi bi-calendar3 me-1 text-warning"></i> Khởi hành: <strong><?= date('d/m/Y', strtotime($group['start_date'])) ?></strong></span>
-                                            
                                         </div>
                                     </div>
                                 </button>
@@ -250,7 +212,7 @@ if (!empty($bookings)) {
                                                                     <a href="manager.php?action=confirmBooking&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-success" title="Duyệt đơn" data-bs-toggle="tooltip" onclick="return confirm('Xác nhận duyệt đơn này?')"><i class="bi bi-check-lg"></i></a>
                                                                 <?php endif; ?>
 
-                                                                <?php if (($b['status'] == 'pending' || $b['status'] == 'confirmed') && $b['payment_status'] == 'pending' && strtoupper($b['payment_method']) == 'COD'): ?>
+                                                                <?php if (($b['status'] == 'pending' || $b['status'] == 'confirmed') && $b['payment_status'] == 'pending' && strtolower($b['payment_method']) == 'cod'): ?>
                                                                     <a href="manager.php?action=confirmCash&id=<?= $b['booking_id'] ?>" class="btn-icon btn-icon-success" style="color: #059669; border-color: #059669;" title="Xác nhận đã thu tiền mặt" data-bs-toggle="tooltip" onclick="return confirm('Xác nhận đã thu tiền mặt từ khách hàng này?')"><i class="bi bi-cash-coin"></i></a>
                                                                 <?php endif; ?>
 
@@ -263,8 +225,6 @@ if (!empty($bookings)) {
                                                                 <?php endif; ?>
                                                             </div>
                                                         </td>
-
-                                                        
                                                     </tr>
                                                 <?php endforeach; ?>
                                             </tbody>
@@ -277,7 +237,6 @@ if (!empty($bookings)) {
                     
                 </div>
                 
-                <!-- Thông báo khi lọc không ra kết quả -->
                 <div id="noDataMsg" class="text-center py-5 bg-white rounded-4 border d-none">
                     <i class="bi bi-search fs-1 d-block mb-3 text-secondary opacity-25"></i>
                     <h5 class="fw-bold text-dark">Không tìm thấy kết quả phù hợp</h5>
@@ -297,7 +256,6 @@ if (!empty($bookings)) {
 </div>
 
 <script>
-    // Kích hoạt Tooltip của Bootstrap cho các nút chức năng
     document.addEventListener("DOMContentLoaded", function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -305,9 +263,7 @@ if (!empty($bookings)) {
         });
     });
 
-    // LỌC DỮ LIỆU BẰNG JAVASCRIPT
     function filterData() {
-        // Lấy giá trị từ các ô input
         const searchText = document.getElementById('searchInput').value.toLowerCase();
         const statusFilter = document.getElementById('statusFilter').value;
         const dateFrom = document.getElementById('dateFrom').value;
@@ -321,22 +277,18 @@ if (!empty($bookings)) {
             const rows = group.querySelectorAll('.booking-row');
 
             rows.forEach(row => {
-                // 1. Kiểm tra Text
                 let rowContent = "";
                 row.querySelectorAll('.search-target').forEach(t => rowContent += t.innerText.toLowerCase() + " ");
                 const matchSearch = rowContent.includes(searchText);
 
-                // 2. Kiểm tra Trạng thái
                 const rowStatus = row.getAttribute('data-status');
                 const matchStatus = (statusFilter === 'all' || rowStatus === statusFilter);
 
-                // 3. Kiểm tra Thời gian
                 const rowDate = row.getAttribute('data-date');
                 let matchDate = true;
                 if (dateFrom && rowDate < dateFrom) matchDate = false;
                 if (dateTo && rowDate > dateTo) matchDate = false;
 
-                // Nếu thỏa mãn tất cả điều kiện -> Hiển thị dòng đó
                 if (matchSearch && matchStatus && matchDate) {
                     row.style.display = '';
                     visibleRowsInGroup++;
@@ -345,7 +297,6 @@ if (!empty($bookings)) {
                 }
             });
 
-            // Nếu Group (Tour) không có dòng nào thỏa mãn, ẩn luôn cả Group đó đi
             if (visibleRowsInGroup > 0) {
                 group.style.display = '';
                 visibleGroups++;
@@ -354,7 +305,6 @@ if (!empty($bookings)) {
             }
         });
 
-        // Hiển thị thông báo "Không có dữ liệu" nếu toàn bộ group bị ẩn
         const noDataMsg = document.getElementById('noDataMsg');
         if (noDataMsg) {
             if (visibleGroups === 0 && groups.length > 0) {
@@ -364,43 +314,5 @@ if (!empty($bookings)) {
             }
         }
     }
-</script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-
-<script>
-    // Bật dòng này lên để xem Pusher kết nối thành công chưa (Bấm F12 -> Console)
-    Pusher.logToConsole = true;
-
-    document.addEventListener("DOMContentLoaded", function() {
-        // Khởi tạo Pusher
-        var pusher = new Pusher('e5405b1b2139fed6f8bc', { cluster: 'ap1' });
-        var adminChannel = pusher.subscribe('admin-channel');
-        
-        // 1. LẮNG NGHE: ĐƠN ĐẶT MỚI
-        adminChannel.bind('new-booking', function(data) {
-            console.log("Nhận được data đặt tour:", data); // Log ra để kiểm tra
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'info',
-                title: '🎉 Đơn đặt tour mới!',
-                text: data.message,
-                showConfirmButton: false, timer: 6000
-            });
-            setTimeout(() => { location.reload(); }, 3000); 
-        });
-
-        // 2. LẮNG NGHE: YÊU CẦU HỦY / HOÀN TIỀN
-        adminChannel.bind('cancel-request', function(data) {
-            console.log("Nhận được data hủy tour:", data); // Log ra để kiểm tra
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'warning',
-                title: '🚨 Có yêu cầu xử lý gấp!',
-                text: data.message,
-                showConfirmButton: false, timer: 8000, 
-                background: '#fffbeb', color: '#d97706'
-            });
-            setTimeout(() => { location.reload(); }, 3000); 
-        });
-    });
 </script>
 <?php include __DIR__ . '/../layouts/footer.php'; ?>
