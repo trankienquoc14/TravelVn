@@ -647,11 +647,22 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 audio.play().catch(e => { console.log("Trình duyệt chặn âm thanh tự động"); });
             }
 
-            // --- D. AUTO F5 CHO TRANG QUẢN LÝ ---
-            if (window.location.href.includes('action=myBookings') || window.location.href.includes('action=bookingDetail') || window.location.href.includes('manager.php')) {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 3000);
+            // --- D. CHỈ HIỆN POPUP THÔNG BÁO ---
+            if (!data.is_silent) {
+
+                Toastify({
+                    text: `${popupIcon} <b>${data.title || typeName}</b><br><small>${data.message}</small>`,
+                    duration: 5000,
+                    close: true,
+                    gravity: "bottom",
+                    position: "right",
+                    escapeMarkup: false,
+                    style: {
+                        background: bgColor,
+                        borderRadius: "12px"
+                    }
+                }).showToast();
+
             }
         }
     });
