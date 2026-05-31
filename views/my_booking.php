@@ -311,6 +311,126 @@
     .rating-container label:hover~label,
     .rating-container input[type="radio"]:checked~label { color: #ffc107; text-shadow: 0 0 15px rgba(255, 193, 7, 0.4); }
     .rating-container label:active { transform: scale(1.2); }
+    /* ================= FILTER & SORT PANEL ================= */
+.booking-page-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.booking-title-box h3 {
+    margin-bottom: 4px;
+}
+
+.booking-result-count {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.booking-filter-panel {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 22px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.filter-label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+}
+
+.filter-control {
+    height: 46px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.filter-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(1, 148, 243, 0.12);
+}
+
+.search-box {
+    position: relative;
+}
+
+.search-box i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+
+.search-box input {
+    padding-left: 42px;
+}
+
+.btn-reset-filter {
+    height: 46px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    background: #f8fafc;
+    color: var(--text-dark);
+    font-weight: 700;
+    width: 100%;
+}
+
+.btn-reset-filter:hover {
+    background: #e2e8f0;
+}
+
+.quick-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.quick-filter {
+    border: 1px solid var(--border-color);
+    background: #f8fafc;
+    color: #475569;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.quick-filter:hover,
+.quick-filter.active {
+    background: #eef7ff;
+    color: var(--primary-color);
+    border-color: #bae6fd;
+}
+
+.booking-no-result {
+    display: none;
+    background: white;
+    border: 1px dashed #cbd5e1;
+    border-radius: 20px;
+    padding: 45px 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .booking-page-head {
+        flex-direction: column;
+    }
+}
 </style>
 
 <div class="container mt-5 mb-5">
@@ -345,7 +465,84 @@
 
         <div class="col-lg-9">
             <h3 class="fw-bold text-dark mb-4">Danh sách chuyến đi</h3>
+<?php if (!empty($bookings)): ?>
+    <div class="booking-filter-panel">
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-4 col-md-6">
+                <div class="filter-label">Tìm kiếm</div>
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="bookingSearchInput" class="form-control filter-control"
+                        placeholder="Tìm mã đơn, tên tour, khách hàng...">
+                </div>
+            </div>
 
+            <div class="col-lg-2 col-md-6">
+                <div class="filter-label">Trạng thái</div>
+                <select id="bookingStatusFilter" class="form-select filter-control">
+                    <option value="all">Tất cả</option>
+                    <option value="pending">Chờ xác nhận</option>
+                    <option value="confirmed">Đã xác nhận</option>
+                    <option value="completed">Hoàn tất</option>
+                    <option value="refund_processing">Đang xử lý hoàn tiền</option>
+                    <option value="refunded">Đã hoàn tiền</option>
+                    <option value="cancelled">Đã hủy</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <div class="filter-label">Thanh toán</div>
+                <select id="bookingPaymentFilter" class="form-select filter-control">
+                    <option value="all">Tất cả</option>
+                    <option value="paid">Đã thanh toán</option>
+                    <option value="unpaid">Chưa thanh toán</option>
+                    <option value="refunded">Đã hoàn tiền</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <div class="filter-label">Sắp xếp</div>
+                <select id="bookingSortSelect" class="form-select filter-control">
+                    <option value="newest">Mới nhất</option>
+                    <option value="oldest">Cũ nhất</option>
+                    <option value="start_soon">Sắp khởi hành</option>
+                    <option value="price_desc">Giá cao nhất</option>
+                    <option value="price_asc">Giá thấp nhất</option>
+                </select>
+            </div>
+
+            <div class="col-lg-2 col-md-6">
+                <button type="button" class="btn-reset-filter" id="bookingResetFilter">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Đặt lại
+                </button>
+            </div>
+        </div>
+
+        <div class="quick-filter-group">
+            <button type="button" class="quick-filter active" data-status="all">
+                Tất cả
+            </button>
+            <button type="button" class="quick-filter" data-status="confirmed">
+                Đã xác nhận
+            </button>
+            <button type="button" class="quick-filter" data-status="refund_processing">
+                Đang hoàn tiền
+            </button>
+            <button type="button" class="quick-filter" data-status="refunded">
+                Đã hoàn tiền
+            </button>
+            <button type="button" class="quick-filter" data-status="completed">
+                Hoàn tất
+            </button>
+        </div>
+    </div>
+
+    <div id="bookingNoResult" class="booking-no-result">
+        <i class="bi bi-search fs-1 d-block mb-3 text-primary"></i>
+        <h5 class="fw-bold text-dark">Không tìm thấy đơn phù hợp</h5>
+        <p class="mb-0">Bạn hãy thử đổi từ khóa, trạng thái hoặc cách sắp xếp.</p>
+    </div>
+<?php endif; ?>
             <?php if (empty($bookings)): ?>
                 <div class="text-center bg-white p-5 rounded-4 shadow-sm border" style="border-radius: 20px !important;">
                     <img src="https://cdn-icons-png.flaticon.com/512/3284/3284615.png" alt="Empty" width="120" class="mb-3 opacity-50">
@@ -415,9 +612,43 @@ if ($b['status'] == 'refunded') {
                     } else {
                         $refundPercent = 0;  // Dưới 7 ngày phạt 100% -> Không hoàn
                     }
+                    $filterStatus = $b['status'];
+
+if ($b['status'] == 'cancelled' && $isPaid) {
+    $filterStatus = 'refund_processing';
+}
+
+$filterPayment = 'unpaid';
+
+if ($b['status'] == 'refunded') {
+    $filterPayment = 'refunded';
+} elseif ($isPaid) {
+    $filterPayment = 'paid';
+}
+
+$bookingSearchText = mb_strtolower(
+    $b['booking_id'] . ' ' .
+    ($b['tour_name'] ?? '') . ' ' .
+    ($b['customer_name'] ?? '') . ' ' .
+    ($b['phone'] ?? '') . ' ' .
+    $statusText . ' ' .
+    $payMethodText,
+    'UTF-8'
+);
+
+$bookingDateTs = !empty($b['booking_date']) ? strtotime($b['booking_date']) : 0;
+$startDateTs = !empty($b['start_date']) ? strtotime($b['start_date']) : 0;
+$totalPriceNum = (float)($b['total_price'] ?? 0);
                     ?>
 
-                    <div class="premium-card">
+                    <div class="premium-card booking-card"
+    data-status="<?= htmlspecialchars($filterStatus) ?>"
+    data-payment="<?= htmlspecialchars($filterPayment) ?>"
+    data-method="<?= htmlspecialchars($payMethod) ?>"
+    data-price="<?= $totalPriceNum ?>"
+    data-booking-date="<?= $bookingDateTs ?>"
+    data-start-date="<?= $startDateTs ?>"
+    data-search="<?= htmlspecialchars($bookingSearchText) ?>">
                         <div class="card-head">
                             <div class="order-info">
                                 <span class="order-id"><i class="bi bi-receipt me-1 text-muted"></i> Mã đơn: #<?= str_pad($b['booking_id'], 6, '0', STR_PAD_LEFT) ?></span>
@@ -644,7 +875,143 @@ if ($b['status'] == 'refunded') {
         socket.emit("join_user_room", {
             user_id: userId
         });
+const searchInput = document.getElementById("bookingSearchInput");
+const statusFilter = document.getElementById("bookingStatusFilter");
+const paymentFilter = document.getElementById("bookingPaymentFilter");
+const sortSelect = document.getElementById("bookingSortSelect");
+const resetBtn = document.getElementById("bookingResetFilter");
+const visibleCount = document.getElementById("bookingVisibleCount");
+const noResultBox = document.getElementById("bookingNoResult");
 
+function getBookingCards() {
+    return Array.from(document.querySelectorAll(".booking-card"));
+}
+
+function normalizeText(text) {
+    return (text || "").toString().toLowerCase().trim();
+}
+
+function filterAndSortBookings() {
+    const keyword = normalizeText(searchInput?.value || "");
+    const selectedStatus = statusFilter?.value || "all";
+    const selectedPayment = paymentFilter?.value || "all";
+    const selectedSort = sortSelect?.value || "newest";
+
+    const cards = getBookingCards();
+    let visibleCards = [];
+
+    cards.forEach(card => {
+        const cardSearch = normalizeText(card.dataset.search || "");
+        const cardStatus = card.dataset.status || "";
+        const cardPayment = card.dataset.payment || "";
+
+        const matchKeyword = keyword === "" || cardSearch.includes(keyword);
+        const matchStatus = selectedStatus === "all" || cardStatus === selectedStatus;
+        const matchPayment = selectedPayment === "all" || cardPayment === selectedPayment;
+
+        const isVisible = matchKeyword && matchStatus && matchPayment;
+
+        card.style.display = isVisible ? "" : "none";
+
+        if (isVisible) {
+            visibleCards.push(card);
+        }
+    });
+
+    visibleCards.sort((a, b) => {
+        const aBookingDate = parseInt(a.dataset.bookingDate || "0");
+        const bBookingDate = parseInt(b.dataset.bookingDate || "0");
+        const aStartDate = parseInt(a.dataset.startDate || "0");
+        const bStartDate = parseInt(b.dataset.startDate || "0");
+        const aPrice = parseFloat(a.dataset.price || "0");
+        const bPrice = parseFloat(b.dataset.price || "0");
+
+        switch (selectedSort) {
+            case "oldest":
+                return aBookingDate - bBookingDate;
+
+            case "start_soon":
+                return aStartDate - bStartDate;
+
+            case "price_desc":
+                return bPrice - aPrice;
+
+            case "price_asc":
+                return aPrice - bPrice;
+
+            case "newest":
+            default:
+                return bBookingDate - aBookingDate;
+        }
+    });
+
+    const parent = cards[0]?.parentElement;
+
+    if (parent) {
+        visibleCards.forEach(card => parent.appendChild(card));
+    }
+
+    if (visibleCount) {
+        visibleCount.innerText = visibleCards.length;
+    }
+
+    if (noResultBox) {
+        noResultBox.style.display = visibleCards.length === 0 ? "block" : "none";
+    }
+}
+
+if (searchInput) {
+    searchInput.addEventListener("input", filterAndSortBookings);
+}
+
+if (statusFilter) {
+    statusFilter.addEventListener("change", filterAndSortBookings);
+}
+
+if (paymentFilter) {
+    paymentFilter.addEventListener("change", filterAndSortBookings);
+}
+
+if (sortSelect) {
+    sortSelect.addEventListener("change", filterAndSortBookings);
+}
+
+if (resetBtn) {
+    resetBtn.addEventListener("click", function () {
+        if (searchInput) searchInput.value = "";
+        if (statusFilter) statusFilter.value = "all";
+        if (paymentFilter) paymentFilter.value = "all";
+        if (sortSelect) sortSelect.value = "newest";
+
+        document.querySelectorAll(".quick-filter").forEach(btn => {
+            btn.classList.remove("active");
+        });
+
+        document.querySelector('.quick-filter[data-status="all"]')?.classList.add("active");
+
+        filterAndSortBookings();
+    });
+}
+
+document.querySelectorAll(".quick-filter").forEach(btn => {
+    btn.addEventListener("click", function () {
+        const status = this.dataset.status || "all";
+
+        if (statusFilter) {
+            statusFilter.value = status;
+        }
+
+        document.querySelectorAll(".quick-filter").forEach(item => {
+            item.classList.remove("active");
+        });
+
+        this.classList.add("active");
+
+        filterAndSortBookings();
+    });
+});
+
+filterAndSortBookings();
         socket.on("payment_success", function (data) {
             console.log("Nhận realtime payment_success:", data);
 
