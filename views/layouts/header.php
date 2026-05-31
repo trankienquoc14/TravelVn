@@ -3,34 +3,48 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 🔥 TRUY VẤN DATABASE LẤY THÔNG BÁO CHO CHUÔNG
+// 🔥 TRUY VẤN DATABASE LẤY THÔNG BÁO CHO CHUÔNG (ĐÃ CHỐNG LỖI 500)
 $notifications = [];
 $unreadCount = 0;
 
 if (isset($_SESSION['user'])) {
-    require_once __DIR__ . '/../config/database.php';
-    $dbHeader = (new Database())->connect();
-
-    $userRole = $_SESSION['user']['role'];
-    $userId = $_SESSION['user']['user_id'];
-
-    // Nếu là Admin/Manager thì lấy thông báo chung (user_id IS NULL)
-    // Nếu là Customer thì lấy thông báo riêng của họ
-    if ($userRole === 'admin' || $userRole === 'tour_manager') {
-        $stmtNotif = $dbHeader->prepare("SELECT * FROM notifications WHERE user_id IS NULL ORDER BY created_at DESC LIMIT 10");
-        $stmtNotif->execute();
-    } else {
-        $stmtNotif = $dbHeader->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
-        $stmtNotif->execute([$userId]);
-    }
-
-    $notifications = $stmtNotif->fetchAll(PDO::FETCH_ASSOC);
-
-    // Đếm số lượng chưa đọc
-    foreach ($notifications as $n) {
-        if ($n['is_read'] == 0) {
-            $unreadCount++;
+    try {
+        // Tự động tìm đúng đường dẫn file database
+        $dbPath = __DIR__ . '/../../config/database.php';
+        if (!file_exists($dbPath)) {
+            $dbPath = __DIR__ . '/../config/database.php'; // Dự phòng
         }
+
+        if (file_exists($dbPath)) {
+            require_once $dbPath;
+            if (class_exists('Database')) {
+                $dbHeader = (new Database())->connect();
+
+                $userRole = $_SESSION['user']['role'];
+                $userId = $_SESSION['user']['user_id'];
+
+                // Nếu là Admin/Manager thì lấy thông báo chung (user_id IS NULL)
+                if ($userRole === 'admin' || $userRole === 'tour_manager') {
+                    $stmtNotif = $dbHeader->prepare("SELECT * FROM notifications WHERE user_id IS NULL ORDER BY created_at DESC LIMIT 10");
+                    $stmtNotif->execute();
+                } else {
+                    $stmtNotif = $dbHeader->prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 10");
+                    $stmtNotif->execute([$userId]);
+                }
+
+                $notifications = $stmtNotif->fetchAll(PDO::FETCH_ASSOC);
+
+                // Đếm số lượng chưa đọc
+                foreach ($notifications as $n) {
+                    if (isset($n['is_read']) && $n['is_read'] == 0) {
+                        $unreadCount++;
+                    }
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // 🛡️ NẾU CÓ LỖI (VD: Chưa tạo cột type, link) => Im lặng bỏ qua để KHÔNG SẬP WEB!
+        error_log("Lỗi thông báo Header: " . $e->getMessage());
     }
 }
 ?>
