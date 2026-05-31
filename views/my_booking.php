@@ -247,7 +247,41 @@
     
     .refund-policy-box p { margin-bottom: 5px; font-size: 0.9rem; }
     .refund-policy-box p:last-child { margin-bottom: 0; }
+.badge-refund-processing {
+    background-color: #fff7ed;
+    color: #ea580c;
+    border: 1px solid #fed7aa;
+}
 
+.pay-processing {
+    color: #ea580c;
+}
+
+.pay-refunded {
+    color: #059669;
+}
+
+.refund-note-box {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    color: #9a3412;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.refunded-note-box {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    color: #047857;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
     /* RESPONSIVE */
     @media (max-width: 991px) {
         .action-column {
@@ -323,31 +357,51 @@
 
                 <?php foreach ($bookings as $b): ?>
                     <?php
-                    $statusClass = 'badge-pending';
-                    $statusText = 'Chờ xác nhận';
-                    if ($b['status'] == 'confirmed') {
-                        $statusClass = 'badge-confirmed';
-                        $statusText = 'Đã xác nhận';
-                    } elseif ($b['status'] == 'cancelled') {
-                        $statusClass = 'badge-cancelled';
-                        $statusText = 'Đã hủy';
-                    } elseif ($b['status'] == 'completed') {
-                        $statusClass = 'badge-completed';
-                        $statusText = 'Hoàn tất';
-                    } elseif ($b['status'] == 'refunded') { // BỔ SUNG TRẠNG THÁI NÀY
-                        $statusClass = 'badge-refunded';
-                        $statusText = 'Đã hoàn tiền';
-                    }
+$statusClass = 'badge-pending';
+$statusText = 'Chờ xác nhận';
+$statusIcon = 'bi-hourglass-split';
 
-                    $payMethod = strtoupper($b['payment_method'] ?? '');
-                    $payMethodText = ($payMethod == 'QR') ? 'Chuyển khoản QR' : (($payMethod == 'COD') ? 'Thu tiền mặt' : 'Chưa chọn');
+$payStatus = $b['payment_status'] ?? 'pending';
+$isPaid = $payStatus === 'paid';
 
-                    $payStatus = $b['payment_status'] ?? 'pending';
-                    if ($payStatus == 'paid') {
-                        $payHTML = '<div class="pay-status pay-paid"><i class="bi bi-shield-check"></i> Đã thanh toán</div>';
-                    } else {
-                        $payHTML = '<div class="pay-status pay-unpaid"><i class="bi bi-exclamation-circle"></i> Chưa thanh toán</div>';
-                    }
+if ($b['status'] == 'confirmed') {
+    $statusClass = 'badge-confirmed';
+    $statusText = 'Đã xác nhận';
+    $statusIcon = 'bi-check-circle-fill';
+
+} elseif ($b['status'] == 'cancelled' && $isPaid) {
+    $statusClass = 'badge-refund-processing';
+    $statusText = 'Đang xử lý hoàn tiền';
+    $statusIcon = 'bi-arrow-repeat';
+
+} elseif ($b['status'] == 'cancelled') {
+    $statusClass = 'badge-cancelled';
+    $statusText = 'Đã hủy';
+    $statusIcon = 'bi-x-circle-fill';
+
+} elseif ($b['status'] == 'completed') {
+    $statusClass = 'badge-completed';
+    $statusText = 'Hoàn tất';
+    $statusIcon = 'bi-flag-fill';
+
+} elseif ($b['status'] == 'refunded') {
+    $statusClass = 'badge-refunded';
+    $statusText = 'Đã hoàn tiền';
+    $statusIcon = 'bi-cash-coin';
+}
+
+$payMethod = strtoupper($b['payment_method'] ?? '');
+$payMethodText = ($payMethod == 'QR') ? 'Chuyển khoản QR' : (($payMethod == 'COD') ? 'Thu tiền mặt' : 'Chưa chọn');
+
+if ($b['status'] == 'refunded') {
+    $payHTML = '<div class="pay-status pay-refunded"><i class="bi bi-cash-coin"></i> Đã hoàn tiền</div>';
+} elseif ($b['status'] == 'cancelled' && $isPaid) {
+    $payHTML = '<div class="pay-status pay-processing"><i class="bi bi-arrow-repeat"></i> Đang xử lý hoàn tiền</div>';
+} elseif ($isPaid) {
+    $payHTML = '<div class="pay-status pay-paid"><i class="bi bi-shield-check"></i> Đã thanh toán</div>';
+} else {
+    $payHTML = '<div class="pay-status pay-unpaid"><i class="bi bi-exclamation-circle"></i> Chưa thanh toán</div>';
+}
                     
                     // Logic tính hoàn tiền
                     $daysRemaining = floor((strtotime($b['start_date']) - time()) / (60 * 60 * 24));
@@ -369,7 +423,10 @@
                                 <span class="order-id"><i class="bi bi-receipt me-1 text-muted"></i> Mã đơn: #<?= str_pad($b['booking_id'], 6, '0', STR_PAD_LEFT) ?></span>
                                 <span class="order-date d-none d-sm-inline-block"><i class="bi bi-clock"></i> Đặt lúc: <?= !empty($b['booking_date']) ? date('H:i - d/m/Y', strtotime($b['booking_date'])) : '--' ?></span>
                             </div>
-                            <span class="status-badge <?= $statusClass ?>" id="badge-<?= $b['booking_id'] ?>"><?= $statusText ?></span>
+                            <span class="status-badge <?= $statusClass ?>" id="badge-<?= $b['booking_id'] ?>">
+    <i class="bi <?= $statusIcon ?> me-1"></i>
+    <?= $statusText ?>
+</span>
                         </div>
 
                         <div class="card-body-custom">
@@ -385,6 +442,17 @@
                                         <li><i class="bi bi-people"></i><span>Hành khách: <strong><?= $b['number_of_people'] ?> người</strong> <span class="text-muted">(<?= htmlspecialchars($b['customer_name']) ?>)</span></span></li>
                                         <li><i class="bi bi-wallet2"></i><span>Phương thức: <strong><?= $payMethodText ?></strong></span></li>
                                     </ul>
+                                    <?php if ($b['status'] == 'cancelled' && $isPaid): ?>
+    <div class="refund-note-box" id="refund-note-<?= $b['booking_id'] ?>">
+        <i class="bi bi-hourglass-split me-1"></i>
+        Đơn đã hủy. TravelVN đang xử lý hoàn tiền cho bạn trong 3 - 5 ngày làm việc.
+    </div>
+<?php elseif ($b['status'] == 'refunded'): ?>
+    <div class="refunded-note-box" id="refund-note-<?= $b['booking_id'] ?>">
+        <i class="bi bi-check-circle-fill me-1"></i>
+        TravelVN đã hoàn tiền thành công cho đơn hàng này.
+    </div>
+<?php endif; ?>
                                 </div>
 
                                 <div class="col-lg-3 col-12">
@@ -591,7 +659,7 @@
                 );
 
                 badge.classList.add(data.badge_class || "badge-confirmed");
-                badge.innerText = data.status_text || "Đã xác nhận";
+                badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ' + (data.status_text || "Đã xác nhận");
             }
 
             Swal.fire({
@@ -604,6 +672,44 @@
                 timer: 5000
             });
         });
+        socket.on("refund_completed", function (data) {
+    console.log("Nhận realtime refund_completed:", data);
+
+    const badge = document.getElementById("badge-" + data.booking_id);
+    const refundNote = document.getElementById("refund-note-" + data.booking_id);
+
+    if (badge) {
+        badge.classList.remove(
+            "badge-pending",
+            "badge-confirmed",
+            "badge-cancelled",
+            "badge-refund-processing",
+            "badge-completed",
+            "badge-refunded"
+        );
+
+        badge.classList.add("badge-refunded");
+        badge.innerHTML = '<i class="bi bi-cash-coin me-1"></i> Đã hoàn tiền';
+    }
+
+    if (refundNote) {
+        refundNote.className = "refunded-note-box";
+        refundNote.innerHTML = `
+            <i class="bi bi-check-circle-fill me-1"></i>
+            TravelVN đã hoàn tiền thành công cho đơn hàng này.
+        `;
+    }
+
+    Swal.fire({
+        toast: true,
+        position: "top-end",
+        icon: "success",
+        title: "Đã hoàn tiền",
+        text: data.message || "TravelVN đã hoàn tiền thành công cho đơn hàng của bạn.",
+        showConfirmButton: false,
+        timer: 5000
+    });
+});
     });
 </script>
 <?php include 'layouts/footer.php'; ?>

@@ -667,41 +667,84 @@ private function triggerPusher($userId, $bookingId, $statusText, $badgeClass) {
     }
 
     public function refundBooking()
-    {
-        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        
-        try {
-            $this->db->beginTransaction();
+{
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-            $stmtBooking = $this->db->prepare("SELECT user_id, status, departure_id, number_of_people FROM bookings WHERE booking_id = ? FOR UPDATE");
-            $stmtBooking->execute([$id]);
-            $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
+    try {
+        $this->db->beginTransaction();
 
-            if ($booking && $booking['status'] !== 'refunded') {
-                
-                // Trường hợp Admin bấm Hoàn Tiền thẳng từ đơn đang Confirmed (chưa qua Cancel)
-                if ($booking['status'] === 'confirmed') {
-                    $this->db->prepare("UPDATE departures SET booked_seats = booked_seats - ?, available_seats = available_seats + ? WHERE departure_id = ?")
-                             ->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
-                }
+        $stmtBooking = $this->db->prepare("
+            SELECT user_id, status, departure_id, number_of_people, total_price
+            FROM bookings 
+            WHERE booking_id = ? 
+            FOR UPDATE
+        ");
+        $stmtBooking->execute([$id]);
+        $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
 
-                $this->db->prepare("UPDATE bookings SET status='refunded' WHERE booking_id=?")->execute([$id]);
-                $this->db->commit();
+        if ($booking && $booking['status'] !== 'refunded') {
 
-                $this->triggerPusher($booking['user_id'], $id, 'Đã hoàn tiền', 'badge-refunded');
-                $_SESSION['success'] = "Đã đánh dấu hoàn tiền thành công đơn #{$id}!";
-            } else {
-                $this->db->rollBack();
+            if ($booking['status'] === 'confirmed') {
+                $this->db->prepare("
+                    UPDATE departures 
+                    SET booked_seats = booked_seats - ?, 
+                        available_seats = available_seats + ? 
+                    WHERE departure_id = ?
+                ")->execute([
+                    $booking['number_of_people'],
+                    $booking['number_of_people'],
+                    $booking['departure_id']
+                ]);
             }
 
-        } catch (Exception $e) {
+            $this->db->prepare("
+                UPDATE bookings 
+                SET status = 'refunded' 
+                WHERE booking_id = ?
+            ")->execute([$id]);
+
+            $message = "TravelVN đã hoàn tiền thành công cho đơn hàng #"
+                . str_pad($id, 6, '0', STR_PAD_LEFT)
+                . ". Số tiền hoàn: "
+                . number_format($booking['total_price'])
+                . "đ.";
+
+            $stmtNotify = $this->db->prepare("
+                INSERT INTO notifications (
+                    user_id,
+                    booking_id,
+                    message,
+                    is_read,
+                    created_at
+                )
+                VALUES (?, ?, ?, 0, NOW())
+            ");
+
+            $stmtNotify->execute([
+                $booking['user_id'],
+                $id,
+                $message
+            ]);
+
+            $this->db->commit();
+
+            $_SESSION['success'] = "Đã đánh dấu hoàn tiền thành công đơn #{$id}!";
+
+        } else {
             $this->db->rollBack();
         }
 
-        header("Location: manager.php?action=bookings");
-        exit;
+    } catch (Exception $e) {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+
+        $_SESSION['error'] = "Lỗi khi cập nhật hoàn tiền: " . $e->getMessage();
     }
 
+    header("Location: manager.php?action=bookings");
+    exit;
+}
     public function confirmCash()
     {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
