@@ -553,6 +553,7 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
     });
 
     // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ SỬA: PHÂN LOẠI CÓ TIẾNG / IM LẶNG) 🔥
+    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ SỬA: PHÂN LOẠI CÓ TIẾNG / IM LẶNG & TỰ VẼ DANH SÁCH) 🔥
     socket.on("system_notification", function (data) {
         let isForMe = false;
 
@@ -563,7 +564,7 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         if (data.target_user_id && data.target_user_id === '<?= $_SESSION['user']['user_id'] ?? '' ?>') isForMe = true;
 
         if (isForMe) {
-            // KHÔNG ĐỔI: Luôn luôn tăng số lượng hiển thị trên chuông Header
+            // 1. TĂNG SỐ LƯỢNG HIỂN THỊ TRÊN CHUÔNG HEADER
             let badge = document.getElementById('global-notif-badge');
             if (badge) {
                 let currentCount = parseInt(badge.innerText) || 0;
@@ -571,17 +572,65 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 badge.classList.remove('d-none');
             }
 
-            // SỬA ĐỔI: Chỉ nổ Popup Toastify và âm thanh khi KHÔNG bật chế độ im lặng (is_silent)
+            // 2. 🔥 MA THUẬT Ở ĐÂY: TỰ ĐỘNG VẼ HTML CHÈN VÀO DANH SÁCH KHÔNG CẦN F5
+            let notifMenu = document.querySelector('.notif-dropdown-menu');
+            if (notifMenu) {
+                // Xóa dòng chữ "Bạn chưa có thông báo nào" nếu nó đang hiện
+                let emptyMsg = notifMenu.querySelector('.text-muted.text-center');
+                if (emptyMsg) emptyMsg.remove();
+
+                // Phân loại màu sắc và Icon dựa trên dữ liệu gửi tới
+                let typeName = data.type || 'Hệ thống';
+                let bgClass = 'bg-primary';
+                let icon = 'bi-info-circle';
+
+                // Bắt từ khóa để tự động lên màu đẹp mắt
+                if (typeName === 'Thanh Toán' || (data.title && data.title.includes('Thanh toán'))) { bgClass = 'bg-success'; icon = 'bi-currency-dollar'; typeName = 'Thanh Toán'; }
+                else if (typeName === 'Hủy Đơn' || (data.title && data.title.includes('giải phóng'))) { bgClass = 'bg-danger'; icon = 'bi-x-circle'; typeName = 'Hủy Đơn'; }
+                else if (typeName === 'Đơn Hàng' || (data.title && data.title.includes('đơn'))) { bgClass = 'bg-warning text-dark'; icon = 'bi-cart-check'; typeName = 'Đơn Hàng'; }
+                else if (data.title && data.title.includes('Tin nhắn')) { bgClass = 'bg-info'; icon = 'bi-chat-dots'; typeName = 'Tin nhắn'; }
+
+                // Khởi tạo thẻ LI chứa HTML y hệt như cấu trúc của PHP (trong file header)
+                let newItem = document.createElement('li');
+                newItem.innerHTML = `
+                    <a href="${data.link || '#'}" class="dropdown-item d-flex align-items-center py-3 border-bottom notif-item bg-light">
+                        <div class="me-3">
+                            <div class="rounded-circle ${bgClass} text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 42px; height: 42px;">
+                                <i class="bi ${icon} fs-5"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="small text-uppercase fw-bold mb-1" style="color: #64748b; font-size: 0.75rem;">
+                                ${typeName}
+                            </div>
+                            <div class="text-dark fw-bold" style="font-size: 0.9rem; line-height: 1.4;">
+                                ${data.message}
+                            </div>
+                            <div class="small text-muted mt-1" style="font-size: 0.8rem;">
+                                <i class="bi bi-clock me-1"></i> Vừa xong
+                            </div>
+                        </div>
+                    </a>
+                `;
+
+                // Tìm thẻ tiêu đề (luôn cố định ở dòng 1) và nhét thông báo mới ngay bên dưới nó
+                let headerLi = notifMenu.querySelector('li.sticky-top');
+                if (headerLi) {
+                    headerLi.insertAdjacentElement('afterend', newItem);
+                }
+            }
+
+            // 3. HIỆN POPUP Ở GÓC MÀN HÌNH (Chỉ hiện khi is_silent = false)
             if (!data.is_silent) {
                 let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)"; // Info mặc định
-                let icon = "📣";
-                if (data.type === 'success') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; icon = "✅"; }
-                if (data.type === 'warning') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; icon = "⚠️"; }
-                if (data.type === 'error') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; icon = "❌"; }
+                let popupIcon = "📣";
 
-                // Bật Popup Toastify ở góc màn hình
+                if (data.type === 'success' || typeName === 'Thanh Toán') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; popupIcon = "✅"; }
+                if (data.type === 'warning' || typeName === 'Đơn Hàng') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; popupIcon = "⚠️"; }
+                if (data.type === 'error' || typeName === 'Hủy Đơn') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; popupIcon = "❌"; }
+
                 Toastify({
-                    text: `${icon} <b>${data.title}</b><br><small>${data.message}</small>`,
+                    text: `${popupIcon} <b>${data.title || typeName}</b><br><small>${data.message}</small>`,
                     duration: 6000,
                     close: true,
                     gravity: "bottom",
@@ -590,7 +639,6 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                     escapeMarkup: false
                 }).showToast();
 
-                // Phát âm thanh Ting kêu bíp bíp
                 let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.volume = 0.5;
                 audio.play().catch(e => { });
