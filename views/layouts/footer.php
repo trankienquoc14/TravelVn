@@ -551,7 +551,8 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
             }
         }
     });
-    // 🔥 4. LẮNG NGHE THÔNG BÁO TỪ HỆ THỐNG ĐỂ KÊU TING TING VÀ HIỆN CHUÔNG ĐỎ
+
+    // 🔥 LẮNG NGHE THÔNG BÁO TỪ HỆ THỐNG ĐỂ KÊU TING TING VÀ HIỆN CHUÔNG ĐỎ
     socket.on("system_notification", function (data) {
         let isForMe = false;
         let myUserId = '<?= $_SESSION['user']['user_id'] ?? '' ?>';
@@ -563,6 +564,9 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
         if (data.target_user_id && String(data.target_user_id) === String(myUserId)) isForMe = true;
 
         if (isForMe) {
+            // 🔥 FIX LỖI: Đưa biến typeName ra ngoài để không bị lỗi undefined
+            let typeName = data.type || 'Hệ thống';
+
             // --- A. CẬP NHẬT CHUÔNG ĐỎ TRÊN HEADER ---
             let badge = document.getElementById('global-notif-badge');
             if (badge) {
@@ -577,7 +581,6 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 let emptyMsg = notifMenu.querySelector('.text-muted.text-center');
                 if (emptyMsg) emptyMsg.remove();
 
-                let typeName = data.type || 'Hệ thống';
                 let bgClass = 'bg-primary';
                 let icon = 'bi-info-circle';
 
@@ -638,6 +641,7 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                     }).showToast();
                 }
 
+                // Phát tiếng Ting Ting
                 let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                 audio.volume = 1.0;
                 audio.play().catch(e => { console.log("Trình duyệt chặn âm thanh tự động"); });
@@ -645,109 +649,6 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
 
             // --- D. AUTO F5 CHO TRANG QUẢN LÝ ---
             if (window.location.href.includes('action=myBookings') || window.location.href.includes('action=bookingDetail') || window.location.href.includes('manager.php')) {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 3000);
-            }
-        }
-    });
-
-    // 🔥 4. LẮNG NGHE THÔNG BÁO TOÀN CẦU (ĐÃ FIX LỖI ÉP KIỂU & AUTO F5 CHO KHÁCH)
-    socket.on("system_notification", function (data) {
-        let isForMe = false;
-        let myUserId = '<?= $_SESSION['user']['user_id'] ?? '' ?>';
-        let myRole = '<?= $_SESSION['user']['role'] ?? 'customer' ?>';
-
-        // 1. Phân loại đối tượng nhận tin siêu chuẩn xác (Ép về chuỗi để so sánh)
-        if (data.target_role === 'all') isForMe = true;
-        if (data.target_role === 'admin_group' && (myRole === 'admin' || myRole === 'tour_manager')) isForMe = true;
-        if (data.target_user_id && String(data.target_user_id) === String(myUserId)) isForMe = true;
-
-        if (isForMe) {
-            // --- A. CẬP NHẬT CHUÔNG ĐỎ TRÊN HEADER NẾU CÓ ---
-            let badge = document.getElementById('global-notif-badge');
-            if (badge) {
-                let currentCount = parseInt(badge.innerText) || 0;
-                badge.innerText = currentCount + 1;
-                badge.classList.remove('d-none');
-            }
-
-            // --- B. VẼ GIAO DIỆN CHÈN VÀO DANH SÁCH CHUÔNG BẤM XUỐNG ---
-            let notifMenu = document.querySelector('.notif-dropdown-menu');
-            if (notifMenu) {
-                let emptyMsg = notifMenu.querySelector('.text-muted.text-center');
-                if (emptyMsg) emptyMsg.remove(); // Xóa chữ "Chưa có thông báo nào"
-
-                let typeName = data.type || 'Hệ thống';
-                let bgClass = 'bg-primary';
-                let icon = 'bi-info-circle';
-
-                if (typeName === 'Thanh Toán' || (data.title && data.title.includes('Thanh toán'))) { bgClass = 'bg-success'; icon = 'bi-currency-dollar'; typeName = 'Thanh Toán'; }
-                else if (typeName === 'Xác Nhận') { bgClass = 'bg-success'; icon = 'bi-check-circle'; typeName = 'Xác Nhận'; }
-                else if (typeName === 'Hủy Đơn' || (data.title && data.title.includes('hủy'))) { bgClass = 'bg-danger'; icon = 'bi-x-circle'; typeName = 'Hủy Đơn'; }
-                else if (typeName === 'Đơn Hàng' || (data.title && data.title.includes('đơn'))) { bgClass = 'bg-warning text-dark'; icon = 'bi-cart-check'; typeName = 'Đơn Hàng'; }
-                else if (data.title && data.title.includes('Tin nhắn')) { bgClass = 'bg-info'; icon = 'bi-chat-dots'; typeName = 'Tin nhắn'; }
-
-                let newItem = document.createElement('li');
-                newItem.innerHTML = `
-                    <a href="${data.link || '#'}" class="dropdown-item d-flex align-items-center py-3 border-bottom notif-item bg-light">
-                        <div class="me-3">
-                            <div class="rounded-circle ${bgClass} text-white d-flex align-items-center justify-content-center shadow-sm" style="width: 42px; height: 42px;">
-                                <i class="bi ${icon} fs-5"></i>
-                            </div>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="small text-uppercase fw-bold mb-1" style="color: #64748b; font-size: 0.75rem;">
-                                ${typeName}
-                            </div>
-                            <div class="text-dark fw-bold" style="font-size: 0.9rem; line-height: 1.4;">
-                                ${data.message}
-                            </div>
-                            <div class="small text-muted mt-1" style="font-size: 0.8rem;">
-                                <i class="bi bi-clock me-1"></i> Vừa xong
-                            </div>
-                        </div>
-                    </a>
-                `;
-
-                // Chèn vào vị trí đầu tiên (ngay dưới chữ tiêu đề)
-                let headerLi = notifMenu.querySelector('li.sticky-top');
-                if (headerLi) {
-                    headerLi.insertAdjacentElement('afterend', newItem);
-                } else {
-                    notifMenu.prepend(newItem);
-                }
-            }
-
-            // --- C. HIỂN THỊ TOAST POPUP Ở GÓC PHẢI & PHÁT ÂM THANH ---
-            if (!data.is_silent) {
-                let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)";
-                let popupIcon = "🔔";
-
-                if (data.type === 'success' || typeName === 'Thanh Toán' || typeName === 'Xác Nhận') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; popupIcon = "✅"; }
-                if (data.type === 'warning' || typeName === 'Đơn Hàng') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; popupIcon = "⚠️"; }
-                if (data.type === 'error' || typeName === 'Hủy Đơn') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; popupIcon = "❌"; }
-
-                if (typeof Toastify !== 'undefined') {
-                    Toastify({
-                        text: `${popupIcon} <b>${data.title || typeName}</b><br><small>${data.message}</small>`,
-                        duration: 8000,
-                        close: true,
-                        gravity: "bottom",
-                        position: "right",
-                        style: { background: bgColor, borderRadius: "12px", color: "#fff", padding: "14px 20px" },
-                        escapeMarkup: false
-                    }).showToast();
-                }
-
-                let audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-                audio.volume = 0.5;
-                audio.play().catch(e => { });
-            }
-
-            // --- D. AUTO F5 DÀNH RIÊNG CHO KHÁCH HÀNG KHI ĐANG MỞ TRANG QUẢN LÝ ---
-            // Nếu khách đang xem trang "Chuyến đi của tôi" hoặc "Chi tiết Booking", tự động reload bảng trong 3 giây
-            if (window.location.href.includes('action=myBookings') || window.location.href.includes('action=bookingDetail')) {
                 setTimeout(() => {
                     window.location.reload();
                 }, 3000);
