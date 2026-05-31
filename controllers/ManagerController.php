@@ -408,24 +408,90 @@ $stmt->execute([
         exit;
     }
 }
+private function getRealDepartureStatus($startDate, $endDate)
+{
+    date_default_timezone_set('Asia/Ho_Chi_Minh');
 
-    public function editDeparture()
-    {
-        $id = $_GET['id'];
-        $stmt = $this->db->prepare("SELECT * FROM departures WHERE departure_id=?");
-        $stmt->execute([$id]);
-        $departure = $stmt->fetch(PDO::FETCH_ASSOC);
+    $today = date('Y-m-d');
+    $start = date('Y-m-d', strtotime($startDate));
+    $end = date('Y-m-d', strtotime($endDate));
 
-        // Lấy thêm cột duration để JS tự động tính ngày
-        $tours = $this->db->query("SELECT tour_id, tour_name, duration FROM tours WHERE status = 'active'")->fetchAll(PDO::FETCH_ASSOC);
-        $guides = $this->db->query("SELECT user_id, full_name FROM users WHERE role='guide'")->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmt = $this->db->prepare("SELECT guide_id FROM departure_guides WHERE departure_id=?");
-        $stmt->execute([$id]);
-        $selectedGuides = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        require __DIR__ . '/../views/manager/edit_departure.php';
+    if ($today < $start) {
+        return 'upcoming';
     }
+
+    if ($today >= $start && $today <= $end) {
+        return 'ongoing';
+    }
+
+    return 'completed';
+}
+    public function editDeparture()
+{
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+    $stmt = $this->db->prepare("SELECT * FROM departures WHERE departure_id=?");
+    $stmt->execute([$id]);
+    $departure = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$departure) {
+        $_SESSION['error'] = "Không tìm thấy lịch vận hành!";
+        header("Location: manager.php?action=departures");
+        exit;
+    }
+
+    // Tự động đồng bộ trạng thái theo ngày thực tế
+    $realStatus = $this->getRealDepartureStatus(
+        $departure['start_date'],
+        $departure['end_date']
+    );
+
+    // Nếu ngày thực tế đã kết thúc mà DB chưa cập nhật thì cập nhật luôn
+    if ($realStatus === 'completed' && $departure['status'] !== 'completed') {
+        $stmtUpdateStatus = $this->db->prepare("
+            UPDATE departures 
+            SET status = 'completed' 
+            WHERE departure_id = ?
+        ");
+        $stmtUpdateStatus->execute([$id]);
+
+        $departure['status'] = 'completed';
+    }
+
+    // Nếu đang trong thời gian tour diễn ra thì cập nhật ongoing
+    if ($realStatus === 'ongoing' && $departure['status'] !== 'ongoing') {
+        $stmtUpdateStatus = $this->db->prepare("
+            UPDATE departures 
+            SET status = 'ongoing' 
+            WHERE departure_id = ?
+        ");
+        $stmtUpdateStatus->execute([$id]);
+
+        $departure['status'] = 'ongoing';
+    }
+
+    $tours = $this->db->query("
+        SELECT tour_id, tour_name, duration 
+        FROM tours 
+        WHERE status = 'active'
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $guides = $this->db->query("
+        SELECT user_id, full_name 
+        FROM users 
+        WHERE role='guide'
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmt = $this->db->prepare("
+        SELECT guide_id 
+        FROM departure_guides 
+        WHERE departure_id=?
+    ");
+    $stmt->execute([$id]);
+    $selectedGuides = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    require __DIR__ . '/../views/manager/edit_departure.php';
+}
 
     public function updateDeparture()
     {
@@ -474,8 +540,34 @@ if (!empty($conflicts)) {
         $new_available = $oldDep['available_seats'] + $diff;
 
         // 2. CẬP NHẬT DATABASE
-        $stmt = $this->db->prepare("UPDATE departures SET tour_id=?, start_date=?, end_date=?, max_seats=?, available_seats=?, status=? WHERE departure_id=?");
-        $stmt->execute([$_POST['tour_id'], $_POST['start_date'], $_POST['end_date'], $new_max, $new_available, $_POST['status'], $id]);
+        $realStatus = $this->getRealDepartureStatus(
+    $_POST['start_date'],
+    $_POST['end_date']
+);
+
+// Nếu chuyến đã kết thúc hoặc đang diễn ra thì ưu tiên trạng thái thực tế
+if ($realStatus === 'completed' || $realStatus === 'ongoing') {
+    $finalStatus = $realStatus;
+} else {
+    // Nếu chưa khởi hành thì cho admin chọn upcoming hoặc closed
+    $finalStatus = $_POST['status'] ?? 'upcoming';
+}
+
+$stmt = $this->db->prepare("
+    UPDATE departures 
+    SET tour_id=?, start_date=?, end_date=?, max_seats=?, available_seats=?, status=? 
+    WHERE departure_id=?
+");
+
+$stmt->execute([
+    $_POST['tour_id'],
+    $_POST['start_date'],
+    $_POST['end_date'],
+    $new_max,
+    $new_available,
+    $finalStatus,
+    $id
+]);
 
         // 3. CẬP NHẬT HƯỚNG DẪN VIÊN & BẮN REALTIME
         $this->db->prepare("DELETE FROM departure_guides WHERE departure_id=?")->execute([$id]);
@@ -667,41 +759,84 @@ private function triggerPusher($userId, $bookingId, $statusText, $badgeClass) {
     }
 
     public function refundBooking()
-    {
-        $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        
-        try {
-            $this->db->beginTransaction();
+{
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-            $stmtBooking = $this->db->prepare("SELECT user_id, status, departure_id, number_of_people FROM bookings WHERE booking_id = ? FOR UPDATE");
-            $stmtBooking->execute([$id]);
-            $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
+    try {
+        $this->db->beginTransaction();
 
-            if ($booking && $booking['status'] !== 'refunded') {
-                
-                // Trường hợp Admin bấm Hoàn Tiền thẳng từ đơn đang Confirmed (chưa qua Cancel)
-                if ($booking['status'] === 'confirmed') {
-                    $this->db->prepare("UPDATE departures SET booked_seats = booked_seats - ?, available_seats = available_seats + ? WHERE departure_id = ?")
-                             ->execute([$booking['number_of_people'], $booking['number_of_people'], $booking['departure_id']]);
-                }
+        $stmtBooking = $this->db->prepare("
+            SELECT user_id, status, departure_id, number_of_people, total_price
+            FROM bookings 
+            WHERE booking_id = ? 
+            FOR UPDATE
+        ");
+        $stmtBooking->execute([$id]);
+        $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
 
-                $this->db->prepare("UPDATE bookings SET status='refunded' WHERE booking_id=?")->execute([$id]);
-                $this->db->commit();
+        if ($booking && $booking['status'] !== 'refunded') {
 
-                $this->triggerPusher($booking['user_id'], $id, 'Đã hoàn tiền', 'badge-refunded');
-                $_SESSION['success'] = "Đã đánh dấu hoàn tiền thành công đơn #{$id}!";
-            } else {
-                $this->db->rollBack();
+            if ($booking['status'] === 'confirmed') {
+                $this->db->prepare("
+                    UPDATE departures 
+                    SET booked_seats = booked_seats - ?, 
+                        available_seats = available_seats + ? 
+                    WHERE departure_id = ?
+                ")->execute([
+                    $booking['number_of_people'],
+                    $booking['number_of_people'],
+                    $booking['departure_id']
+                ]);
             }
 
-        } catch (Exception $e) {
+            $this->db->prepare("
+                UPDATE bookings 
+                SET status = 'refunded' 
+                WHERE booking_id = ?
+            ")->execute([$id]);
+
+            $message = "TravelVN đã hoàn tiền thành công cho đơn hàng #"
+                . str_pad($id, 6, '0', STR_PAD_LEFT)
+                . ". Số tiền hoàn: "
+                . number_format($booking['total_price'])
+                . "đ.";
+
+            $stmtNotify = $this->db->prepare("
+                INSERT INTO notifications (
+                    user_id,
+                    booking_id,
+                    message,
+                    is_read,
+                    created_at
+                )
+                VALUES (?, ?, ?, 0, NOW())
+            ");
+
+            $stmtNotify->execute([
+                $booking['user_id'],
+                $id,
+                $message
+            ]);
+
+            $this->db->commit();
+
+            $_SESSION['success'] = "Đã đánh dấu hoàn tiền thành công đơn #{$id}!";
+
+        } else {
             $this->db->rollBack();
         }
 
-        header("Location: manager.php?action=bookings");
-        exit;
+    } catch (Exception $e) {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+
+        $_SESSION['error'] = "Lỗi khi cập nhật hoàn tiền: " . $e->getMessage();
     }
 
+    header("Location: manager.php?action=bookings");
+    exit;
+}
     public function confirmCash()
     {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;

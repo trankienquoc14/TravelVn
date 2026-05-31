@@ -1,38 +1,60 @@
 <?php
-// Lấy dữ liệu từ Controller
 $data = $booking;
 
-$status = $data['status'];
+$status = $data['status'] ?? 'pending';
 $payStatus = $data['payment_status'] ?? 'pending';
 $payMethod = strtoupper($data['payment_method'] ?? 'CASH');
 
-// 1. LOGIC BADGE TRẠNG THÁI CHÍNH
-$badgeClass = 'bg-secondary';
+$isPaid = ($payStatus === 'paid');
+$isRefundProcessing = ($status === 'cancelled' && $isPaid);
+$isRefunded = ($status === 'refunded');
+
+// 1. BADGE TRẠNG THÁI CHÍNH
+$badgeClass = 'status-neutral';
 $statusText = 'Không xác định';
 $statusIcon = 'bi-question-circle';
 
 if ($status === 'pending') {
-    $badgeClass = 'bg-warning text-dark'; $statusText = 'Chờ xác nhận'; $statusIcon = 'bi-hourglass-split';
+    $badgeClass = 'status-warning';
+    $statusText = 'Chờ xác nhận';
+    $statusIcon = 'bi-hourglass-split';
+
 } elseif ($status === 'confirmed') {
-    $badgeClass = 'bg-success text-white'; $statusText = 'Đã xác nhận'; $statusIcon = 'bi-check-circle-fill';
+    $badgeClass = 'status-success';
+    $statusText = 'Đã xác nhận';
+    $statusIcon = 'bi-check-circle-fill';
+
 } elseif ($status === 'completed' || $status === 'checked_in') {
-    $badgeClass = 'bg-primary text-white'; $statusText = 'Hoàn tất'; $statusIcon = 'bi-flag-fill';
-} elseif ($status === 'refunded') {
-    $badgeClass = 'bg-dark text-white'; $statusText = 'Đã hoàn tiền'; $statusIcon = 'bi-arrow-counterclockwise';
+    $badgeClass = 'status-primary';
+    $statusText = 'Hoàn tất';
+    $statusIcon = 'bi-flag-fill';
+
+} elseif ($isRefunded) {
+    $badgeClass = 'status-refunded';
+    $statusText = 'Đã hoàn tiền';
+    $statusIcon = 'bi-cash-coin';
+
+} elseif ($isRefundProcessing) {
+    $badgeClass = 'status-refund-processing';
+    $statusText = 'Đang xử lý hoàn tiền';
+    $statusIcon = 'bi-arrow-repeat';
+
 } elseif ($status === 'cancelled') {
-    $badgeClass = 'bg-danger text-white'; $statusText = 'Đã hủy'; $statusIcon = 'bi-x-circle-fill';
+    $badgeClass = 'status-danger';
+    $statusText = 'Đã hủy';
+    $statusIcon = 'bi-x-circle-fill';
 }
 
-// 2. LOGIC TIMELINE TIẾN ĐỘ
-$step1 = 'completed'; // Luôn hoàn thành (Đã đặt)
-$step2 = ($payStatus === 'paid') ? 'completed' : 'active'; // Thanh toán
-$step3 = ''; // Xác nhận
+// 2. TIMELINE
+$step1 = 'completed';
+$step2 = ($isPaid) ? 'completed' : 'active';
+$step3 = '';
 if (in_array($status, ['confirmed', 'completed', 'checked_in'])) {
     $step3 = 'completed';
 } elseif ($status === 'pending') {
     $step3 = 'active';
 }
-$step4 = ($status === 'completed') ? 'completed' : ''; // Hoàn tất
+$step4 = ($status === 'completed' || $status === 'checked_in') ? 'completed' : '';
 ?>
 
 <?php include 'layouts/header.php'; ?>
@@ -51,7 +73,11 @@ $step4 = ($status === 'completed') ? 'completed' : ''; // Hoàn tất
 
     body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; }
     
-    .ticket-container { max-width: 1100px; margin: 40px auto; padding: 0 15px; }
+    .ticket-container {
+    max-width: 1380px;
+    margin: 32px auto 60px;
+    padding: 0 18px;
+}
 
     /* Main Card */
     .detail-card {
@@ -115,7 +141,123 @@ $step4 = ($status === 'completed') ? 'completed' : ''; // Hoàn tất
     .bp-body { padding: 30px 20px; text-align: center; background: white; }
     .qr-box { background: white; padding: 15px; border-radius: 16px; border: 1px solid var(--border-color); display: inline-block; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
     .qr-box img { width: 180px; height: 180px; }
+.ticket-container {
+    max-width: 1380px;
+    margin: 32px auto 60px;
+    padding: 0 18px;
+}
+.status-alert {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 22px 24px;
+    border-radius: 20px;
+    border: 1px solid;
+}
 
+.status-alert-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.status-alert-processing {
+    background: #fff7ed;
+    border-color: #fdba74;
+    color: #9a3412;
+}
+.status-alert-processing .status-alert-icon {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.status-alert-success {
+    background: #ecfdf5;
+    border-color: #86efac;
+    color: #065f46;
+}
+.status-alert-success .status-alert-icon {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.status-alert-danger {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+.status-alert-danger .status-alert-icon {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.detail-card {
+    background: #ffffff;
+    border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-warning {
+    background: #fef3c7;
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+.status-success {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #86efac;
+}
+
+.status-primary {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #93c5fd;
+}
+
+.status-danger {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+.status-refund-processing {
+    background: #fff7ed;
+    color: #ea580c;
+    border-color: #fdba74;
+}
+
+.status-refunded {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #86efac;
+}
+
+.status-neutral {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
     @media (max-width: 768px) { .info-grid { grid-template-columns: 1fr; gap: 0; } }
 </style>
 
@@ -143,30 +285,59 @@ $step4 = ($status === 'completed') ? 'completed' : ''; // Hoàn tất
                         </div>
                     </div>
                     <div class="mt-3 mt-md-0">
-                        <span class="badge <?= $badgeClass ?> px-3 py-2 rounded-pill fs-6 shadow-sm"><i class="<?= $statusIcon ?> me-1"></i> <?= $statusText ?></span>
+                        <span class="status-pill <?= $badgeClass ?>">
+    <i class="bi <?= $statusIcon ?>"></i>
+    <?= $statusText ?>
+</span>
                     </div>
                 </div>
 
                 <hr class="my-4" style="border-color: var(--border-color); opacity: 1;">
 
-                <?php if ($status === 'cancelled' || $status === 'refunded'): ?>
-                    <div class="alert alert-danger shadow-sm border-0 d-flex align-items-center rounded-4 p-4 my-4">
-                        <i class="bi bi-x-octagon-fill fs-1 me-3"></i>
-                        <div>
-                            <h5 class="fw-bold mb-1">Hành trình này đã bị hủy!</h5>
-                            <p class="mb-0 text-dark opacity-75">
-                                <?php if ($status === 'refunded'): ?>
-                                    Hệ thống đã hoàn tất việc hoàn trả tiền vào tài khoản của bạn.
-                                <?php elseif ($payStatus === 'paid'): ?>
-                                    Hệ thống đã ghi nhận yêu cầu hủy. Kế toán đang xử lý hoàn trả <strong><?= number_format($data['total_price']) ?>đ</strong> cho bạn theo chính sách.
-                                <?php else: ?>
-                                    Đơn đặt chỗ đã được hủy thành công. Hẹn gặp lại bạn trong những chuyến đi tiếp theo!
-                                <?php endif; ?>
-                            </p>
-                        </div>
-                    </div>
-                
-                <?php else: ?>
+                <?php if ($isRefundProcessing): ?>
+    <div class="status-alert status-alert-processing my-4">
+        <div class="status-alert-icon">
+            <i class="bi bi-arrow-repeat"></i>
+        </div>
+        <div>
+            <h5 class="fw-bold mb-1">Đơn hàng đang được xử lý hoàn tiền</h5>
+            <p class="mb-0">
+                TravelVN đã ghi nhận yêu cầu hủy. Bộ phận kế toán đang xử lý hoàn trả
+                <strong><?= number_format($data['total_price']) ?>đ</strong>
+                cho bạn trong vòng <strong>3 - 5 ngày làm việc</strong>.
+            </p>
+        </div>
+    </div>
+
+<?php elseif ($isRefunded): ?>
+    <div class="status-alert status-alert-success my-4">
+        <div class="status-alert-icon">
+            <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <div>
+            <h5 class="fw-bold mb-1">Đã hoàn tiền thành công</h5>
+            <p class="mb-0">
+                TravelVN đã hoàn tất việc hoàn trả
+                <strong><?= number_format($data['total_price']) ?>đ</strong>
+                vào tài khoản đăng ký nhận hoàn tiền của bạn.
+            </p>
+        </div>
+    </div>
+
+<?php elseif ($status === 'cancelled'): ?>
+    <div class="status-alert status-alert-danger my-4">
+        <div class="status-alert-icon">
+            <i class="bi bi-x-octagon-fill"></i>
+        </div>
+        <div>
+            <h5 class="fw-bold mb-1">Đơn hàng đã bị hủy</h5>
+            <p class="mb-0">
+                Đơn đặt chỗ đã được hủy thành công. Hẹn gặp lại bạn trong những chuyến đi tiếp theo!
+            </p>
+        </div>
+    </div>
+
+<?php else: ?>
                     <div class="timeline-container">
                         <div class="timeline-line"></div>
                         <div class="timeline-steps">
@@ -227,13 +398,29 @@ $step4 = ($status === 'completed') ? 'completed' : ''; // Hoàn tất
 
                 <div class="payment-summary">
                     <div>
-                        <span class="d-block text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.85rem;">Tổng thanh toán</span>
-                        <?php if ($payStatus === 'paid'): ?>
-                            <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Đã thanh toán</span>
-                        <?php else: ?>
-                            <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split me-1"></i> Chưa thanh toán (<?= $payMethod ?>)</span>
-                        <?php endif; ?>
-                    </div>
+    <span class="d-block text-muted fw-bold mb-2 text-uppercase" style="font-size: 0.85rem;">Tổng thanh toán</span>
+
+    <?php if ($isRefunded): ?>
+        <span class="status-pill status-refunded">
+            <i class="bi bi-cash-coin"></i> Đã hoàn tiền
+        </span>
+
+    <?php elseif ($isRefundProcessing): ?>
+        <span class="status-pill status-refund-processing">
+            <i class="bi bi-arrow-repeat"></i> Đang xử lý hoàn tiền
+        </span>
+
+    <?php elseif ($payStatus === 'paid'): ?>
+        <span class="status-pill status-success">
+            <i class="bi bi-check-circle-fill"></i> Đã thanh toán
+        </span>
+
+    <?php else: ?>
+        <span class="status-pill status-warning">
+            <i class="bi bi-hourglass-split"></i> Chưa thanh toán (<?= $payMethod ?>)
+        </span>
+    <?php endif; ?>
+</div>
                     <div class="total-price"><?= number_format($data['total_price']) ?> <span style="font-size: 1.2rem; color: var(--text-main);">VND</span></div>
                 </div>
 

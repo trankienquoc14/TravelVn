@@ -1,7 +1,52 @@
-<?php 
-    include __DIR__ . '/../layouts/header.php'; 
-    // Logic mở khóa thông minh: Nếu ngày đi trong quá khứ, cho phép sửa giữ nguyên ngày đó. Nếu ở tương lai, chặn chọn về quá khứ.
-    $minDate = ($departure['start_date'] < date('Y-m-d')) ? $departure['start_date'] : date('Y-m-d');
+<?php
+date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+$today = date('Y-m-d');
+
+function getRealDepartureStatus($startDate, $endDate)
+{
+    $today = date('Y-m-d');
+    $start = date('Y-m-d', strtotime($startDate));
+    $end = date('Y-m-d', strtotime($endDate));
+
+    if ($today < $start) {
+        return 'upcoming';
+    }
+
+    if ($today >= $start && $today <= $end) {
+        return 'ongoing';
+    }
+
+    return 'completed';
+}
+
+$realStatus = getRealDepartureStatus($departure['start_date'], $departure['end_date']);
+
+$realStatusText = [
+    'upcoming' => 'Chờ khởi hành',
+    'ongoing' => 'Đang diễn ra',
+    'completed' => 'Đã hoàn thành'
+][$realStatus] ?? 'Không xác định';
+
+$realStatusIcon = [
+    'upcoming' => 'bi-hourglass-split',
+    'ongoing' => 'bi-play-circle-fill',
+    'completed' => 'bi-check-circle-fill'
+][$realStatus] ?? 'bi-question-circle';
+
+$realStatusClass = [
+    'upcoming' => 'status-upcoming',
+    'ongoing' => 'status-ongoing',
+    'completed' => 'status-completed'
+][$realStatus] ?? 'status-unknown';
+
+// Nếu ngày đi trong quá khứ, cho phép giữ nguyên ngày cũ.
+// Nếu ở tương lai, không cho chọn ngày quá khứ.
+$minDate = ($departure['start_date'] < $today) ? $departure['start_date'] : $today;
+
+$isCompletedByDate = ($realStatus === 'completed');
+
+include __DIR__ . '/../layouts/header.php';
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -45,6 +90,81 @@
         background-color: #fff; font-size: 0.95rem; transition: 0.2s; 
     }
     .form-control:focus { box-shadow: 0 0 0 4px rgba(1, 148, 243, 0.1); border-color: var(--admin-primary); }
+    .status-overview {
+    background: #ffffff;
+    border: 1px solid var(--admin-border);
+    border-radius: 18px;
+    padding: 18px 20px;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.status-overview-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.status-overview-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.status-upcoming {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #bae6fd;
+}
+
+.status-ongoing {
+    background: #dcfce7;
+    color: #16a34a;
+    border-color: #86efac;
+}
+
+.status-completed {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #cbd5e1;
+}
+
+.status-warning-box {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+.form-control[readonly],
+.form-select:disabled {
+    background-color: #f1f5f9;
+    cursor: not-allowed;
+}
 </style>
 
 <div class="admin-container">
@@ -61,7 +181,34 @@
                     <i class="bi bi-arrow-left me-1"></i> Trở về
                 </a>
             </div>
+<div class="status-overview">
+    <div class="status-overview-left">
+        <div class="status-overview-icon <?= $realStatusClass ?>">
+            <i class="bi <?= $realStatusIcon ?>"></i>
+        </div>
 
+        <div>
+            <div class="fw-bold text-dark mb-1">Trạng thái thực tế theo ngày</div>
+            <div class="text-muted small">
+                Hôm nay: <strong><?= date('d/m/Y') ?></strong> · 
+                Chuyến đi từ <strong><?= date('d/m/Y', strtotime($departure['start_date'])) ?></strong>
+                đến <strong><?= date('d/m/Y', strtotime($departure['end_date'])) ?></strong>
+            </div>
+        </div>
+    </div>
+
+    <span class="status-pill <?= $realStatusClass ?>">
+        <i class="bi <?= $realStatusIcon ?>"></i>
+        <?= $realStatusText ?>
+    </span>
+</div>
+
+<?php if ($isCompletedByDate): ?>
+    <div class="status-warning-box">
+        <i class="bi bi-info-circle-fill me-1"></i>
+        Chuyến đi này đã kết thúc theo ngày thực tế. Admin chỉ nên xem lại thông tin, không nên chỉnh ngày khởi hành hoặc phân công HDV.
+    </div>
+<?php endif; ?>
             <div class="admin-card">
                 <form method="POST" action="manager.php?action=updateDeparture" id="editForm">
                     <input type="hidden" name="departure_id" value="<?= htmlspecialchars($departure['departure_id']) ?>">
@@ -81,12 +228,33 @@
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Trạng thái chuyến đi</label>
-                                <select name="status" class="form-select fw-bold">
-                                    <option value="upcoming" <?= $departure['status'] == 'upcoming' ? 'selected' : '' ?>>Đang mở bán (Upcoming)</option>
-                                    <option value="closed" <?= $departure['status'] == 'closed' ? 'selected' : '' ?>>Đóng / Chốt sổ (Closed)</option>
-                                </select>
-                            </div>
+    <label class="form-label">Trạng thái chuyến đi</label>
+
+    <?php if ($isCompletedByDate): ?>
+    <div class="form-control fw-bold d-flex align-items-center"
+         style="background:#f1f5f9; cursor:not-allowed;">
+        <span class="status-pill status-completed">
+            <i class="bi bi-check-circle-fill"></i>
+            Đã hoàn thành
+        </span>
+    </div>
+
+    <input type="hidden" name="status" value="completed">
+
+    <div class="small text-muted mt-2">
+        Chuyến đi đã kết thúc theo ngày thực tế nên trạng thái được tự động ghi nhận là Đã hoàn thành.
+    </div>
+<?php else: ?>
+    <select name="status" class="form-select fw-bold">
+        <option value="upcoming" <?= $departure['status'] == 'upcoming' ? 'selected' : '' ?>>
+            Đang mở bán
+        </option>
+        <option value="closed" <?= $departure['status'] == 'closed' ? 'selected' : '' ?>>
+            Đóng / Chốt sổ
+        </option>
+    </select>
+<?php endif; ?>
+</div>
                         </div>
                     </div>
 
@@ -95,7 +263,12 @@
                         <div class="row g-4">
                             <div class="col-md-4">
                                 <label class="form-label">Ngày bắt đầu</label>
-                                <input type="date" id="startDate" name="start_date" value="<?= htmlspecialchars($departure['start_date']) ?>" class="form-control fw-bold" min="<?= $minDate ?>" required>
+                                <input type="date" id="startDate" name="start_date"
+    value="<?= htmlspecialchars($departure['start_date']) ?>"
+    class="form-control fw-bold"
+    min="<?= $minDate ?>"
+    <?= $isCompletedByDate ? 'readonly' : '' ?>
+    required>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Ngày kết thúc</label>
@@ -103,8 +276,12 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Số chỗ tối đa</label>
-                                <input type="number" id="maxSeats" name="max_seats" value="<?= htmlspecialchars($departure['max_seats']) ?>" class="form-control fw-bold" min="1" required>
-                            </div>
+                                <input type="number" id="maxSeats" name="max_seats"
+    value="<?= htmlspecialchars($departure['max_seats']) ?>"
+    class="form-control fw-bold"
+    min="1"
+    <?= $isCompletedByDate ? 'readonly' : '' ?>
+    required>
                         </div>
                         <?php
     $soldSeats = $departure['max_seats'] - $departure['available_seats'];
@@ -122,19 +299,30 @@
                     <div class="form-group-section mb-0">
                         <div class="section-title"><i class="bi bi-people text-warning"></i> Phân công Hướng dẫn viên</div>
                         <label class="form-label">Chọn HDV phụ trách</label>
-                        <select name="guides[]" class="form-select" multiple>
+                        <select name="guides[]" class="form-select" multiple <?= $isCompletedByDate ? 'disabled' : '' ?>>
                             <?php foreach ($guides as $g): ?>
                                 <option value="<?= $g['user_id'] ?>" <?= (isset($selectedGuides) && in_array($g['user_id'], $selectedGuides)) ? 'selected' : '' ?>>
                                     <?= htmlspecialchars($g['full_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <?php if ($isCompletedByDate && !empty($selectedGuides)): ?>
+    <?php foreach ($selectedGuides as $guideId): ?>
+        <input type="hidden" name="guides[]" value="<?= htmlspecialchars($guideId) ?>">
+    <?php endforeach; ?>
+<?php endif; ?>
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
-                        <button type="submit" class="btn btn-primary px-5 py-3 fw-bold shadow-lg" style="border-radius: 12px;">
-                            <i class="bi bi-save me-2"></i> Lưu Cập Nhật
-                        </button>
+                        <?php if ($isCompletedByDate): ?>
+    <a href="manager.php?action=departures" class="btn btn-secondary px-5 py-3 fw-bold shadow-sm" style="border-radius: 12px;">
+        <i class="bi bi-arrow-left me-2"></i> Quay lại danh sách
+    </a>
+<?php else: ?>
+    <button type="submit" class="btn btn-primary px-5 py-3 fw-bold shadow-lg" style="border-radius: 12px;">
+        <i class="bi bi-save me-2"></i> Lưu Cập Nhật
+    </button>
+<?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -149,7 +337,11 @@
         const editForm = document.getElementById('editForm');
         const maxSeatsInput = document.getElementById('maxSeats');
         const bookedSeats = parseInt(document.getElementById('bookedSeats').value, 10);
+const isCompletedByDate = <?= $isCompletedByDate ? 'true' : 'false' ?>;
 
+if (isCompletedByDate) {
+    return;
+}
         // Hàm tự động tính ngày kết thúc
         function autoCalculateEndDate() {
             if (!tourSelect.value || !startDateInput.value) return;
