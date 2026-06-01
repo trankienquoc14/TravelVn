@@ -817,7 +817,73 @@ class ManagerController
         $detail = $stmt->fetch(PDO::FETCH_ASSOC);
         require __DIR__ . '/../views/manager/booking_detail.php';
     }
+    // ================= XỬ LÝ HỦY ĐƠN ĐẶT TOUR =================
+    public function cancelBooking()
+    {
+        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
+        if ($id <= 0) {
+            $_SESSION['error'] = "Mã đơn hàng không hợp lệ!";
+            header("Location: manager.php?action=bookings");
+            exit;
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Khóa row để tránh xung đột dữ liệu (Pessimistic Locking)
+            $stmtBooking = $this->db->prepare("
+                SELECT user_id, status, customer_name
+                FROM bookings
+                WHERE booking_id = ?
+                FOR UPDATE
+            ");
+            $stmtBooking->execute([$id]);
+            $booking = $stmtBooking->fetch(PDO::FETCH_ASSOC);
+
+            // Kiểm tra xem đơn có tồn tại hoặc đã bị hủy trước đó chưa
+            if (!$booking || $booking['status'] === 'cancelled') {
+                $this->db->rollBack();
+                $_SESSION['error'] = "Đơn hàng không tồn tại hoặc đã bị hủy trước đó!";
+                header("Location: manager.php?action=bookings");
+                exit;
+            }
+
+            // 2. Cập nhật trạng thái đơn hàng thành 'cancelled' (Đã hủy)
+            $this->db->prepare("
+                UPDATE bookings
+                SET status='cancelled'
+                WHERE booking_id=?
+            ")->execute([$id]);
+
+            // 3. Ghi thông báo vào CSDL cho khách hàng
+            $link_user = "index.php?action=myBookings";
+            $message_user = "❌ Đơn đặt tour #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã bị hủy bởi quản trị viên.";
+
+            $this->db->prepare("
+                INSERT INTO notifications
+                (user_id, booking_id, type, link, message)
+                VALUES (?, ?, 'Hủy Đơn', ?, ?)
+            ")->execute([
+                        $booking['user_id'],
+                        $id,
+                        $link_user,
+                        $message_user
+                    ]);
+
+            $this->db->commit();
+
+            $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
+            $_SESSION['success'] = "Đã hủy thành công đơn hàng <strong>#{$id}</strong> của khách {$customerName}!";
+
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $_SESSION['error'] = "Đã xảy ra lỗi hệ thống: " . $e->getMessage();
+        }
+
+        header("Location: manager.php?action=bookings");
+        exit;
+    }
     public function report()
     {
         $startDate = !empty($_GET['start_date']) ? $_GET['start_date'] : date('Y-m-01');
