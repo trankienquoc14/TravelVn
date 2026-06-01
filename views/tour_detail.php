@@ -191,6 +191,15 @@ include 'layouts/header.php';
     .review-meta small { color: var(--tvlk-gray); font-size: 0.85rem; }
     .review-meta .stars i { color: #ffc107; font-size: 0.9rem; }
     .review-comment { color: #4a5568; line-height: 1.6; margin: 0; font-size: 0.95rem; }
+    .policy-link {
+    color: #0d6efd;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.policy-link:hover {
+    text-decoration: underline;
+}
     .hero-rating {
         background: rgba(0, 0, 0, 0.4); 
         backdrop-filter: blur(8px); 
@@ -343,11 +352,17 @@ include 'layouts/header.php';
                 <div class="policy-box">
                     <h5 class="fw-bold text-dark mb-3"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Thông tin cần lưu ý</h5>
                     <ul>
-                        <li><strong>Điểm tập trung:</strong> Thông báo chi tiết qua điện thoại/email trước ngày đi 1-2 ngày. Vui lòng có mặt trước 30 phút.</li>
-                        <li><strong>Chính sách hủy:</strong> Hủy trước 03 ngày khởi hành hoàn 100%. Hủy sát ngày hoặc không có mặt mất 100% phí.</li>
-                        <li>Khách hàng mang thai, có bệnh lý nền cần thông báo cho nhân viên tư vấn để được hỗ trợ sắp xếp.</li>
-                        <li>Lịch trình có thể thay đổi thứ tự tùy theo điều kiện thời tiết thực tế nhưng vẫn đảm bảo đủ điểm tham quan.</li>
-                    </ul>
+    <li><strong>Điểm tập trung:</strong> Thông báo chi tiết qua điện thoại/email trước ngày đi 1-2 ngày. Vui lòng có mặt trước 30 phút.</li>
+
+    <li>
+        <strong>Chính sách hủy:</strong> Điều kiện hủy tour được áp dụng theo quy định hiện hành của TravelVN.
+        Vui lòng xem chi tiết tại 
+        <a href="policy.php" class="policy-link">Chính sách hủy tour</a>.
+    </li>
+
+    <li>Khách hàng mang thai, có bệnh lý nền cần thông báo cho nhân viên tư vấn để được hỗ trợ sắp xếp.</li>
+    <li>Lịch trình có thể thay đổi thứ tự tùy theo điều kiện thời tiết thực tế nhưng vẫn đảm bảo đủ điểm tham quan.</li>
+</ul>
                 </div>
             </div>
 

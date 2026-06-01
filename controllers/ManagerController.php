@@ -155,24 +155,55 @@ class ManagerController
     }
 
     public function deleteTour()
-    {
-        $id = $_GET['id'];
-        $stmt = $this->db->prepare("SELECT image FROM tours WHERE tour_id=?");
-        $stmt->execute([$id]);
-        $tour = $stmt->fetch(PDO::FETCH_ASSOC);
+{
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-        $path = __DIR__ . '/../public/uploads/';
-        if (!empty($tour['image']) && file_exists($path . $tour['image'])) {
-            unlink($path . $tour['image']);
-        }
-
-        $stmt = $this->db->prepare("DELETE FROM tours WHERE tour_id=?");
-        $stmt->execute([$id]);
-
-        $_SESSION['success'] = "Đã xóa tour thành công!";
+    if ($id <= 0) {
+        $_SESSION['error'] = "Tour không hợp lệ!";
         header("Location: manager.php?action=tours");
         exit;
     }
+
+    // Kiểm tra tour có lịch khởi hành chưa
+    $checkDeparture = $this->db->prepare("
+        SELECT COUNT(*) 
+        FROM departures 
+        WHERE tour_id = ? 
+        AND status != 'cancelled'
+    ");
+    $checkDeparture->execute([$id]);
+
+    if ($checkDeparture->fetchColumn() > 0) {
+        $_SESSION['error'] = "Không thể xóa tour này vì tour đang có lịch khởi hành.";
+        header("Location: manager.php?action=tours");
+        exit;
+    }
+
+    // Lấy ảnh tour
+    $stmt = $this->db->prepare("SELECT image FROM tours WHERE tour_id=?");
+    $stmt->execute([$id]);
+    $tour = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$tour) {
+        $_SESSION['error'] = "Không tìm thấy tour cần xóa!";
+        header("Location: manager.php?action=tours");
+        exit;
+    }
+
+    // Xóa ảnh nếu có
+    $path = __DIR__ . '/../public/uploads/';
+    if (!empty($tour['image']) && file_exists($path . $tour['image'])) {
+        unlink($path . $tour['image']);
+    }
+
+    // Xóa tour
+    $stmt = $this->db->prepare("DELETE FROM tours WHERE tour_id=?");
+    $stmt->execute([$id]);
+
+    $_SESSION['success'] = "Đã xóa tour thành công!";
+    header("Location: manager.php?action=tours");
+    exit;
+}
 
     public function partners()
     {
