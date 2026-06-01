@@ -230,32 +230,51 @@ include __DIR__ . '/../layouts/header.php';
                             <div class="col-md-4">
     <label class="form-label">Trạng thái chuyến đi</label>
 
-    <?php if ($isCompletedByDate): ?>
-    <div class="form-control fw-bold d-flex align-items-center"
-         style="background:#f1f5f9; cursor:not-allowed;">
-        <span class="status-pill status-completed">
-            <i class="bi bi-check-circle-fill"></i>
-            Đã hoàn thành
-        </span>
-    </div>
+    <?php if ($realStatus === 'ongoing'): ?>
+        <div class="form-control fw-bold d-flex align-items-center"
+             style="background:#ecfdf5; cursor:not-allowed;">
+            <span class="status-pill status-ongoing">
+                <i class="bi bi-play-circle-fill"></i>
+                Đang diễn ra
+            </span>
+        </div>
 
-    <input type="hidden" name="status" value="completed">
+        <input type="hidden" name="status" value="ongoing">
 
-    <div class="small text-muted mt-2">
-        Chuyến đi đã kết thúc theo ngày thực tế nên trạng thái được tự động ghi nhận là Đã hoàn thành.
-    </div>
-<?php else: ?>
-    <select name="status" class="form-select fw-bold">
-        <option value="upcoming" <?= $departure['status'] == 'upcoming' ? 'selected' : '' ?>>
-            Đang mở bán
-        </option>
-        <option value="closed" <?= $departure['status'] == 'closed' ? 'selected' : '' ?>>
-            Đóng / Chốt sổ
-        </option>
-    </select>
-<?php endif; ?>
+        <div class="small text-muted mt-2">
+            Chuyến đi đang trong thời gian diễn ra nên trạng thái được tự động ghi nhận là Đang diễn ra.
+        </div>
+
+    <?php elseif ($realStatus === 'completed'): ?>
+        <div class="form-control fw-bold d-flex align-items-center"
+             style="background:#f1f5f9; cursor:not-allowed;">
+            <span class="status-pill status-completed">
+                <i class="bi bi-check-circle-fill"></i>
+                Đã hoàn thành
+            </span>
+        </div>
+
+        <input type="hidden" name="status" value="completed">
+
+        <div class="small text-muted mt-2">
+            Chuyến đi đã kết thúc theo ngày thực tế nên trạng thái được tự động ghi nhận là Đã hoàn thành.
+        </div>
+
+    <?php else: ?>
+        <select name="status" class="form-select fw-bold">
+            <option value="upcoming" <?= $departure['status'] == 'upcoming' ? 'selected' : '' ?>>
+                Đang mở bán
+            </option>
+            <option value="closed" <?= $departure['status'] == 'closed' ? 'selected' : '' ?>>
+                Đóng / Chốt sổ
+            </option>
+        </select>
+
+        <div class="small text-muted mt-2">
+            Chuyến đi chưa khởi hành, admin có thể mở bán hoặc đóng/chốt sổ.
+        </div>
+    <?php endif; ?>
 </div>
-                        </div>
                     </div>
 
                     <div class="form-group-section">

@@ -375,20 +375,23 @@ class ManagerController
         try {
             $this->db->beginTransaction();
 
-            // Thêm lịch khởi hành
-            $stmt = $this->db->prepare("
-            INSERT INTO departures 
-            (tour_id, start_date, end_date, max_seats, available_seats, booked_seats, status) 
-            VALUES (?, ?, ?, ?, ?, 0, 'upcoming')
-        ");
+           $realStatus = $this->getRealDepartureStatus($start_date, $end_date);
+
+$stmt = $this->db->prepare("
+    INSERT INTO departures 
+    (tour_id, start_date, end_date, max_seats, available_seats, booked_seats, status) 
+    VALUES (?, ?, ?, ?, ?, 0, ?)
+");
+        
 
             $stmt->execute([
-                $tour_id,
-                $start_date,
-                $end_date,
-                $max_seats,
-                $max_seats
-            ]);
+    $tour_id,
+    $start_date,
+    $end_date,
+    $max_seats,
+    $max_seats,
+    $realStatus
+]);
 
             $departure_id = $this->db->lastInsertId();
 
@@ -442,6 +445,31 @@ class ManagerController
             exit;
         }
     }
+    private function syncDepartureStatuses()
+{
+    date_default_timezone_set('Asia/Ho_Chi_Minh');
+
+    $today = date('Y-m-d');
+
+    // Chuyến đang diễn ra
+    $stmtOngoing = $this->db->prepare("
+        UPDATE departures
+        SET status = 'ongoing'
+        WHERE status NOT IN ('cancelled', 'completed')
+        AND start_date <= ?
+        AND end_date >= ?
+    ");
+    $stmtOngoing->execute([$today, $today]);
+
+    // Chuyến đã hoàn thành
+    $stmtCompleted = $this->db->prepare("
+        UPDATE departures
+        SET status = 'completed'
+        WHERE status != 'cancelled'
+        AND end_date < ?
+    ");
+    $stmtCompleted->execute([$today]);
+}
     private function getRealDepartureStatus($startDate, $endDate)
     {
         date_default_timezone_set('Asia/Ho_Chi_Minh');
@@ -636,6 +664,7 @@ class ManagerController
     }
     public function departures()
     {
+        $this->syncDepartureStatuses();
         $stmt = $this->db->query("
             SELECT d.*, t.tour_name, GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS guides,
                    (SELECT COALESCE(SUM(b.number_of_people), 0) FROM bookings b WHERE b.departure_id = d.departure_id AND b.status IN ('confirmed', 'completed', 'checked_in')) AS real_booked_seats
