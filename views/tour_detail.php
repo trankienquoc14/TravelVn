@@ -352,17 +352,17 @@ include 'layouts/header.php';
                 <div class="policy-box">
                     <h5 class="fw-bold text-dark mb-3"><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Thông tin cần lưu ý</h5>
                     <ul>
-    <li><strong>Điểm tập trung:</strong> Thông báo chi tiết qua điện thoại/email trước ngày đi 1-2 ngày. Vui lòng có mặt trước 30 phút.</li>
+                        <li><strong>Điểm tập trung:</strong> Thông báo chi tiết qua điện thoại/email trước ngày đi 1-2 ngày. Vui lòng có mặt trước 30 phút.</li>
 
-    <li>
-        <strong>Chính sách hủy:</strong> Điều kiện hủy tour được áp dụng theo quy định hiện hành của TravelVN.
-        Vui lòng xem chi tiết tại 
-        <a href="policy.php" class="policy-link">Chính sách hủy tour</a>.
-    </li>
+                        <li>
+                            <strong>Chính sách hủy:</strong> Điều kiện hủy tour được áp dụng theo quy định hiện hành của TravelVN.
+                            Vui lòng xem chi tiết tại 
+                            <a href="index.php?action=policy" class="policy-link">Chính sách hủy tour</a>
+                        </li>
 
-    <li>Khách hàng mang thai, có bệnh lý nền cần thông báo cho nhân viên tư vấn để được hỗ trợ sắp xếp.</li>
-    <li>Lịch trình có thể thay đổi thứ tự tùy theo điều kiện thời tiết thực tế nhưng vẫn đảm bảo đủ điểm tham quan.</li>
-</ul>
+                        <li>Khách hàng mang thai, có bệnh lý nền cần thông báo cho nhân viên tư vấn để được hỗ trợ sắp xếp.</li>
+                        <li>Lịch trình có thể thay đổi thứ tự tùy theo điều kiện thời tiết thực tế nhưng vẫn đảm bảo đủ điểm tham quan.</li>
+                    </ul>
                 </div>
             </div>
 
