@@ -712,6 +712,14 @@ class ManagerController
                     ]);
 
             $this->db->commit();
+            $_SESSION['realtime_notify'] = [
+                'target_user_id' => $booking['user_id'],
+                'type' => 'Xác Nhận',
+                'title' => '✅ Đã xác nhận',
+                'message' => "Đơn đặt tour #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " đã được hệ thống duyệt!",
+                'booking_id' => $id,
+                'is_silent' => false
+            ];
 
             $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
             $_SESSION['success'] = "Đã duyệt thành công đơn hàng <strong>#{$id}</strong> của khách {$customerName}!";
