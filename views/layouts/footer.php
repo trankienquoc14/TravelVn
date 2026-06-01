@@ -646,6 +646,16 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 audio.volume = 1.0;
                 audio.play().catch(e => { console.log("Trình duyệt chặn âm thanh tự động"); });
             }
+            if (data.type === 'success' || data.title.includes('Thanh toán')) {
+                // Giả sử bạn gửi kèm booking_id trong data
+                if (data.booking_id) {
+                    let badge = document.getElementById("badge-" + data.booking_id);
+                    if (badge) {
+                        badge.className = "status-badge badge-confirmed";
+                        badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã thanh toán';
+                    }
+                }
+            }
 
             // --- D. CHỈ HIỆN POPUP THÔNG BÁO ---
             if (!data.is_silent) {
