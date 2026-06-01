@@ -1078,70 +1078,76 @@
         filterAndSortBookings();
         // --- KẾT THÚC PHẦN FILTER ---
 
-        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME (ÉP CHỜ SOCKET TỪ FOOTER)
+        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME (TỐI ƯU HÓA DOM)
         let checkSocketInterval = setInterval(() => {
-            // Kiểm tra liên tục mỗi nửa giây xem footer.php đã tạo ra biến globalSocket chưa
+            // Chờ cho đến khi file footer.php khởi tạo xong socket
             if (typeof window.globalSocket !== 'undefined') {
-                clearInterval(checkSocketInterval); // Có rồi thì dừng kiểm tra
+                clearInterval(checkSocketInterval);
 
                 window.globalSocket.on("system_notification", function (data) {
-
-                    // BẬT F12 (CONSOLE) LÊN ĐỂ KIỂM TRA DÒNG NÀY XEM CÓ BOOKING_ID KHÔNG
                     console.log("👉 Dữ liệu Socket nhận được:", data);
 
-                    if (data.booking_id) {
-                        let badge = document.getElementById("badge-" + data.booking_id);
+                    // 1. TÌM ID ĐƠN HÀNG (Dùng Regex bóc tách số 57 từ chuỗi "#000057")
+                    let bId = data.booking_id;
+                    if (!bId && data.message) {
+                        let match = data.message.match(/#0*(\d+)/);
+                        if (match) bId = match[1]; // Sẽ lấy ra được đúng số 57
+                    }
 
-                        // Nếu trang hiện tại không chứa đơn hàng này thì bỏ qua
-                        if (!badge) {
-                            console.log("❌ Không tìm thấy thẻ HTML có id: badge-" + data.booking_id);
-                            return;
-                        }
+                    // 2. NẾU CÓ ID, TÌM THẺ HTML VÀ ĐỔI MÀU GIAO DIỆN
+                    if (bId) {
+                        let badge = document.getElementById("badge-" + bId);
 
-                        let typeName = data.type || '';
-                        let bookingCard = badge.closest('.booking-card');
+                        if (badge) {
+                            let typeName = data.type || '';
+                            let bookingCard = badge.closest('.booking-card');
 
-                        // ==========================================
-                        // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN
-                        // ==========================================
-                        if (typeName === 'Thanh Toán' || typeName === 'Xác Nhận') {
-                            badge.className = "status-badge badge-confirmed";
-                            badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
+                            // ==========================================
+                            // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN
+                            // ==========================================
+                            if (typeName.includes('Xác Nhận') || typeName.includes('Thanh Toán')) {
+                                // Đổi màu Badge Vàng sang Xanh
+                                badge.className = "status-badge badge-confirmed";
+                                badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
 
-                            let payStatusDiv = bookingCard.querySelector('.pay-status');
-                            if (payStatusDiv) {
-                                payStatusDiv.className = "pay-status pay-paid";
-                                payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
+                                // Đổi dòng chữ "Chưa thanh toán" sang "Đã thanh toán"
+                                let payStatusDiv = bookingCard.querySelector('.pay-status');
+                                if (payStatusDiv) {
+                                    payStatusDiv.className = "pay-status pay-paid";
+                                    payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
+                                }
+
+                                // Ẩn luôn nút "Thanh toán ngay" và "Hủy tour" đi
+                                let payBtn = bookingCard.querySelector('.btn-payment');
+                                if (payBtn) payBtn.remove();
+
+                                let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                                if (cancelBtn) cancelBtn.remove();
                             }
 
-                            let payBtn = bookingCard.querySelector('.btn-payment');
-                            if (payBtn) payBtn.style.display = 'none';
+                            // ==========================================
+                            // KỊCH BẢN 2: HỦY ĐƠN HÀNG
+                            // ==========================================
+                            else if (typeName.includes('Hủy Đơn')) {
+                                // Đổi màu Badge Vàng sang Đỏ
+                                badge.className = "status-badge badge-cancelled";
+                                badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
 
-                            let cancelBtn = bookingCard.querySelector('.btn-cancel');
-                            if (cancelBtn) cancelBtn.style.display = 'none';
-                        }
+                                // Nếu đã thanh toán, đổi trạng thái sang "Đang hoàn tiền"
+                                let payStatusDiv = bookingCard.querySelector('.pay-status');
+                                if (payStatusDiv && payStatusDiv.classList.contains('pay-paid')) {
+                                    payStatusDiv.className = "pay-status pay-processing";
+                                    payStatusDiv.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang xử lý hoàn tiền';
+                                }
 
-                        // ==========================================
-                        // KỊCH BẢN 2: HỦY ĐƠN HÀNG
-                        // ==========================================
-                        else if (typeName === 'Hủy Đơn') {
-                            badge.className = "status-badge badge-cancelled";
-                            badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
+                                // Ẩn các nút hành động
+                                let payBtn = bookingCard.querySelector('.btn-payment');
+                                if (payBtn) payBtn.remove();
 
-                            let payStatusDiv = bookingCard.querySelector('.pay-status');
-                            if (payStatusDiv && payStatusDiv.classList.contains('pay-paid')) {
-                                payStatusDiv.className = "pay-status pay-processing";
-                                payStatusDiv.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang xử lý hoàn tiền';
+                                let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                                if (cancelBtn) cancelBtn.remove();
                             }
-
-                            let payBtn = bookingCard.querySelector('.btn-payment');
-                            if (payBtn) payBtn.style.display = 'none';
-
-                            let cancelBtn = bookingCard.querySelector('.btn-cancel');
-                            if (cancelBtn) cancelBtn.style.display = 'none';
                         }
-                    } else {
-                        console.log("⚠️ BÁO ĐỘNG: Backend PHP chưa gửi booking_id qua Socket!");
                     }
                 });
             }
