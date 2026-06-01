@@ -817,7 +817,6 @@ class ManagerController
         $detail = $stmt->fetch(PDO::FETCH_ASSOC);
         require __DIR__ . '/../views/manager/booking_detail.php';
     }
-    // ================= XỬ LÝ HỦY ĐƠN ĐẶT TOUR =================
     public function cancelBooking()
     {
         $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -831,9 +830,9 @@ class ManagerController
         try {
             $this->db->beginTransaction();
 
-            // 1. Khóa row để tránh xung đột dữ liệu (Pessimistic Locking)
+            // 1. Khóa row và lấy thêm departure_id, number_of_people để biết số ghế cần trả
             $stmtBooking = $this->db->prepare("
-                SELECT user_id, status, customer_name
+                SELECT user_id, status, customer_name, departure_id, number_of_people
                 FROM bookings
                 WHERE booking_id = ?
                 FOR UPDATE
@@ -856,9 +855,18 @@ class ManagerController
                 WHERE booking_id=?
             ")->execute([$id]);
 
-            // 3. Ghi thông báo vào CSDL cho khách hàng
+            // 3. HOÀN TRẢ GHẾ: Cộng lại ghế trống và trừ ghế đã đặt trong bảng departures
+            $slotsToReturn = (int) $booking['number_of_people'];
+            $this->db->prepare("
+                UPDATE departures 
+                SET available_seats = available_seats + ?, 
+                    booked_seats = booked_seats - ? 
+                WHERE departure_id = ?
+            ")->execute([$slotsToReturn, $slotsToReturn, $booking['departure_id']]);
+
+            // 4. Ghi thông báo vào CSDL cho khách hàng
             $link_user = "index.php?action=myBookings";
-            $message_user = "❌ Đơn đặt tour #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã bị hủy bởi quản trị viên.";
+            $message_user = "❌ Đơn đặt tour #" . str_pad($id, 6, '0', STR_PAD_LEFT) . " của bạn đã bị hủy bởi quản trị viên. Số chỗ đã được hoàn lại.";
 
             $this->db->prepare("
                 INSERT INTO notifications
@@ -874,7 +882,7 @@ class ManagerController
             $this->db->commit();
 
             $customerName = htmlspecialchars($booking['customer_name'] ?? 'Khách hàng');
-            $_SESSION['success'] = "Đã hủy thành công đơn hàng <strong>#{$id}</strong> của khách {$customerName}!";
+            $_SESSION['success'] = "Đã hủy đơn hàng <strong>#{$id}</strong> của khách {$customerName} và hoàn trả {$slotsToReturn} chỗ!";
 
         } catch (Exception $e) {
             $this->db->rollBack();
