@@ -625,9 +625,12 @@ if (!in_array($currentPage, $excludedPages) && !in_array($currentAction, $exclud
                 let bgColor = "linear-gradient(to right, #0194f3, #00d2ff)";
                 let popupIcon = "🔔";
 
-                if (data.type === 'success' || typeName === 'Thanh Toán' || typeName === 'Xác Nhận') { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; popupIcon = "✅"; }
-                if (data.type === 'warning' || typeName === 'Đơn Hàng') { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; popupIcon = "⚠️"; }
-                if (data.type === 'error' || typeName === 'Hủy Đơn') { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; popupIcon = "❌"; }
+                if (data.type === 'success' || typeName === 'Thanh Toán' || typeName === 'Xác Nhận') 
+                    { bgColor = "linear-gradient(to right, #00b09b, #96c93d)"; popupIcon = "✅"; }
+                if (data.type === 'warning' || typeName === 'Đơn Hàng') 
+                    { bgColor = "linear-gradient(to right, #f5af19, #f12711)"; popupIcon = "⚠️"; }
+                if (data.type === 'error' || typeName === 'Hủy Đơn') 
+                    { bgColor = "linear-gradient(to right, #ff416c, #ff4b2b)"; popupIcon = "❌"; }
 
                 if (typeof Toastify !== 'undefined') {
                     Toastify({
