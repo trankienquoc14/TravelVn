@@ -1078,65 +1078,64 @@
         filterAndSortBookings();
         // --- KẾT THÚC PHẦN FILTER ---
 
-        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME (TÁI SỬ DỤNG GLOBAL SOCKET)
-        // SetTimeout 1s để chờ footer.php khởi tạo biến window.globalSocket thành công
+        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME
         setTimeout(() => {
             if (typeof window.globalSocket !== 'undefined') {
 
-                // Lắng nghe chung sự kiện system_notification mà PHP bắn ra
                 window.globalSocket.on("system_notification", function (data) {
 
-                    // Nếu Backend có gửi kèm booking_id thì mới cập nhật DOM
                     if (data.booking_id) {
+                        // Tìm đúng cái nút "Chờ xác nhận" nền vàng thông qua ID
                         let badge = document.getElementById("badge-" + data.booking_id);
-                        if (!badge) return; // Nếu thẻ không tồn tại trên trang thì bỏ qua
+                        if (!badge) return;
 
                         let typeName = data.type || '';
                         let bookingCard = badge.closest('.booking-card');
 
-                        // 1. NGHIỆP VỤ: THANH TOÁN / XÁC NHẬN
+                        // ==========================================
+                        // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN THÀNH CÔNG
+                        // ==========================================
                         if (typeName === 'Thanh Toán' || typeName === 'Xác Nhận') {
-                            // Đổi màu Badge
+
+                            // 1. Đổi nút vàng "Chờ xác nhận" -> nút xanh "Đã xác nhận"
                             badge.className = "status-badge badge-confirmed";
                             badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
 
-                            // Đổi text "Chưa thanh toán" thành "Đã thanh toán"
+                            // 2. Tìm dòng chữ cam "Chưa thanh toán" và đổi thành xanh "Đã thanh toán"
                             let payStatusDiv = bookingCard.querySelector('.pay-status');
                             if (payStatusDiv) {
                                 payStatusDiv.className = "pay-status pay-paid";
-                                payStatusDiv.innerHTML = '<i class="bi bi-shield-check"></i> Đã thanh toán';
+                                payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
                             }
 
-                            // Ẩn nút "Thanh toán ngay" đi vì đã trả tiền rồi
-                            let payBtn = bookingCard.querySelector('.btn-payment');
-                            if (payBtn) payBtn.style.display = 'none';
-                        }
-
-                        // 2. NGHIỆP VỤ: HỦY ĐƠN
-                        else if (typeName === 'Hủy Đơn') {
-                            badge.className = "status-badge badge-cancelled";
-                            badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
-
-                            // Ẩn nút thanh toán nếu chưa thanh toán mà bị hủy
+                            // 3. Ẩn nút "Thanh toán ngay" ở bên dưới
                             let payBtn = bookingCard.querySelector('.btn-payment');
                             if (payBtn) payBtn.style.display = 'none';
 
-                            // Ẩn nút "Hủy & Hoàn tiền"
+                            // 4. Ẩn nút "Hủy & Hoàn tiền" 
                             let cancelBtn = bookingCard.querySelector('.btn-cancel');
                             if (cancelBtn) cancelBtn.style.display = 'none';
                         }
 
-                        // 3. NGHIỆP VỤ: HOÀN TIỀN
-                        else if (typeName === 'Hoàn Tiền') {
-                            badge.className = "status-badge badge-refunded";
-                            badge.innerHTML = '<i class="bi bi-cash-coin me-1"></i> Đã hoàn tiền';
+                        // ==========================================
+                        // KỊCH BẢN 2: HỦY ĐƠN HÀNG
+                        // ==========================================
+                        else if (typeName === 'Hủy Đơn') {
 
-                            // Thay đổi box ghi chú hoàn tiền
-                            let refundNote = document.getElementById("refund-note-" + data.booking_id);
-                            if (refundNote) {
-                                refundNote.className = "refunded-note-box";
-                                refundNote.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> TravelVN đã hoàn tiền thành công cho đơn hàng này.';
+                            badge.className = "status-badge badge-cancelled";
+                            badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
+
+                            let payStatusDiv = bookingCard.querySelector('.pay-status');
+                            if (payStatusDiv && payStatusDiv.classList.contains('pay-paid')) {
+                                payStatusDiv.className = "pay-status pay-processing";
+                                payStatusDiv.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Đang xử lý hoàn tiền';
                             }
+
+                            let payBtn = bookingCard.querySelector('.btn-payment');
+                            if (payBtn) payBtn.style.display = 'none';
+
+                            let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                            if (cancelBtn) cancelBtn.style.display = 'none';
                         }
                     }
                 });
