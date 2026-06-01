@@ -9,10 +9,7 @@ class TourController
     {
         $this->db = (new Database())->connect();
     }
-public function policy()
-{
-    require_once __DIR__ . '/../views/policy.php';
-}
+
     public function triggerCleanup()
     {
         $this->autoCancelExpiredBookings();
@@ -20,7 +17,6 @@ public function policy()
         echo json_encode(['status' => 'success']);
         exit;
     }
-
     public function home()
     {
         $queryDiscount = "
@@ -592,35 +588,40 @@ public function policy()
         require __DIR__ . '/../views/blog_detail.php';
     }
 
-    public function blogs()
-    {
-        $stmt = $this->db->query("SELECT * FROM blogs ORDER BY created_at DESC");
-        $blogsList = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        require __DIR__ . '/../views/blogs.php';
-    }
+   public function blogs()
+{
+    $stmt = $this->db->query("SELECT * FROM blogs ORDER BY created_at DESC");
+    $blogsList = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    require __DIR__ . '/../views/blogs.php';
+}
 
-    public function about()
-    {
-        require __DIR__ . '/../views/about.php';
-    }
-    public function careers()
-    {
-        require __DIR__ . '/../views/careers.php';
-    }
-    public function affiliate()
-    {
-        require __DIR__ . '/../views/affiliate.php';
-    }
-    public function guidePage()
-    {
-        require __DIR__ . '/../views/guide_page.php';
-    }
-    public function faq()
-    {
-        require __DIR__ . '/../views/faq.php';
-    }
-    public function policy()
-    {
-        require __DIR__ . '/../views/policy.php';
-    }
+public function about()
+{
+    require __DIR__ . '/../views/about.php';
+}
+
+public function careers()
+{
+    require __DIR__ . '/../views/careers.php';
+}
+
+public function affiliate()
+{
+    require __DIR__ . '/../views/affiliate.php';
+}
+
+public function guide()
+{
+    require __DIR__ . '/../views/guide.php';
+}
+
+public function faq()
+{
+    require __DIR__ . '/../views/faq.php';
+}
+
+public function policy()
+{
+    require __DIR__ . '/../views/policy.php';
+}
 }
