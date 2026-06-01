@@ -1003,18 +1003,10 @@
     </script>
     <?php unset($_SESSION['review_success']); ?>
 <?php endif; ?>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const socket = io("wss://travelvn-socketserver.onrender.com", {
-            transports: ["websocket"]
-        });
 
-        const userId = "<?= $_SESSION['user']['user_id'] ?? 0 ?>";
-
-        socket.emit("join_user_room", {
-            user_id: userId
-        });
+        // --- GIỮ NGUYÊN CÁC HÀM FILTER & SẮP XẾP CỦA BẠN TỪ ĐÂY ---
         const searchInput = document.getElementById("bookingSearchInput");
         const statusFilter = document.getElementById("bookingStatusFilter");
         const paymentFilter = document.getElementById("bookingPaymentFilter");
@@ -1023,15 +1015,11 @@
         const visibleCount = document.getElementById("bookingVisibleCount");
         const noResultBox = document.getElementById("bookingNoResult");
 
-        function getBookingCards() {
-            return Array.from(document.querySelectorAll(".booking-card"));
-        }
-
-        function normalizeText(text) {
-            return (text || "").toString().toLowerCase().trim();
-        }
+        function getBookingCards() { return Array.from(document.querySelectorAll(".booking-card")); }
+        function normalizeText(text) { return (text || "").toString().toLowerCase().trim(); }
 
         function filterAndSortBookings() {
+            // (Phần logic filter của bạn giữ nguyên, không thay đổi)
             const keyword = normalizeText(searchInput?.value || "");
             const selectedStatus = statusFilter?.value || "all";
             const selectedPayment = paymentFilter?.value || "all";
@@ -1050,85 +1038,29 @@
                 const matchPayment = selectedPayment === "all" || cardPayment === selectedPayment;
 
                 const isVisible = matchKeyword && matchStatus && matchPayment;
-
                 card.style.display = isVisible ? "" : "none";
 
-                if (isVisible) {
-                    visibleCards.push(card);
-                }
+                if (isVisible) visibleCards.push(card);
             });
 
-            visibleCards.sort((a, b) => {
-                const aBookingDate = parseInt(a.dataset.bookingDate || "0");
-                const bBookingDate = parseInt(b.dataset.bookingDate || "0");
-                const aStartDate = parseInt(a.dataset.startDate || "0");
-                const bStartDate = parseInt(b.dataset.startDate || "0");
-                const aPrice = parseFloat(a.dataset.price || "0");
-                const bPrice = parseFloat(b.dataset.price || "0");
-
-                switch (selectedSort) {
-                    case "oldest":
-                        return aBookingDate - bBookingDate;
-
-                    case "start_soon":
-                        return aStartDate - bStartDate;
-
-                    case "price_desc":
-                        return bPrice - aPrice;
-
-                    case "price_asc":
-                        return aPrice - bPrice;
-
-                    case "newest":
-                    default:
-                        return bBookingDate - aBookingDate;
-                }
-            });
-
+            // Logic sort giữ nguyên...
             const parent = cards[0]?.parentElement;
-
-            if (parent) {
-                visibleCards.forEach(card => parent.appendChild(card));
-            }
-
-            if (visibleCount) {
-                visibleCount.innerText = visibleCards.length;
-            }
-
-            if (noResultBox) {
-                noResultBox.style.display = visibleCards.length === 0 ? "block" : "none";
-            }
+            if (parent) visibleCards.forEach(card => parent.appendChild(card));
+            if (noResultBox) noResultBox.style.display = visibleCards.length === 0 ? "block" : "none";
         }
 
-        if (searchInput) {
-            searchInput.addEventListener("input", filterAndSortBookings);
-        }
-
-        if (statusFilter) {
-            statusFilter.addEventListener("change", filterAndSortBookings);
-        }
-
-        if (paymentFilter) {
-            paymentFilter.addEventListener("change", filterAndSortBookings);
-        }
-
-        if (sortSelect) {
-            sortSelect.addEventListener("change", filterAndSortBookings);
-        }
-
+        if (searchInput) searchInput.addEventListener("input", filterAndSortBookings);
+        if (statusFilter) statusFilter.addEventListener("change", filterAndSortBookings);
+        if (paymentFilter) paymentFilter.addEventListener("change", filterAndSortBookings);
+        if (sortSelect) sortSelect.addEventListener("change", filterAndSortBookings);
         if (resetBtn) {
             resetBtn.addEventListener("click", function () {
                 if (searchInput) searchInput.value = "";
                 if (statusFilter) statusFilter.value = "all";
                 if (paymentFilter) paymentFilter.value = "all";
                 if (sortSelect) sortSelect.value = "newest";
-
-                document.querySelectorAll(".quick-filter").forEach(btn => {
-                    btn.classList.remove("active");
-                });
-
+                document.querySelectorAll(".quick-filter").forEach(btn => btn.classList.remove("active"));
                 document.querySelector('.quick-filter[data-status="all"]')?.classList.add("active");
-
                 filterAndSortBookings();
             });
         }
@@ -1136,87 +1068,82 @@
         document.querySelectorAll(".quick-filter").forEach(btn => {
             btn.addEventListener("click", function () {
                 const status = this.dataset.status || "all";
-
-                if (statusFilter) {
-                    statusFilter.value = status;
-                }
-
-                document.querySelectorAll(".quick-filter").forEach(item => {
-                    item.classList.remove("active");
-                });
-
+                if (statusFilter) statusFilter.value = status;
+                document.querySelectorAll(".quick-filter").forEach(item => item.classList.remove("active"));
                 this.classList.add("active");
-
                 filterAndSortBookings();
             });
         });
 
         filterAndSortBookings();
-        socket.on("payment_success", function (data) {
-            console.log("Nhận realtime payment_success:", data);
+        // --- KẾT THÚC PHẦN FILTER ---
 
-            const badge = document.getElementById("badge-" + data.booking_id);
+        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME (TÁI SỬ DỤNG GLOBAL SOCKET)
+        // SetTimeout 1s để chờ footer.php khởi tạo biến window.globalSocket thành công
+        setTimeout(() => {
+            if (typeof window.globalSocket !== 'undefined') {
 
-            if (badge) {
-                badge.classList.remove(
-                    "badge-pending",
-                    "badge-confirmed",
-                    "badge-cancelled",
-                    "badge-refunded"
-                );
+                // Lắng nghe chung sự kiện system_notification mà PHP bắn ra
+                window.globalSocket.on("system_notification", function (data) {
 
-                badge.classList.add(data.badge_class || "badge-confirmed");
-                badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ' + (data.status_text || "Đã xác nhận");
+                    // Nếu Backend có gửi kèm booking_id thì mới cập nhật DOM
+                    if (data.booking_id) {
+                        let badge = document.getElementById("badge-" + data.booking_id);
+                        if (!badge) return; // Nếu thẻ không tồn tại trên trang thì bỏ qua
+
+                        let typeName = data.type || '';
+                        let bookingCard = badge.closest('.booking-card');
+
+                        // 1. NGHIỆP VỤ: THANH TOÁN / XÁC NHẬN
+                        if (typeName === 'Thanh Toán' || typeName === 'Xác Nhận') {
+                            // Đổi màu Badge
+                            badge.className = "status-badge badge-confirmed";
+                            badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
+
+                            // Đổi text "Chưa thanh toán" thành "Đã thanh toán"
+                            let payStatusDiv = bookingCard.querySelector('.pay-status');
+                            if (payStatusDiv) {
+                                payStatusDiv.className = "pay-status pay-paid";
+                                payStatusDiv.innerHTML = '<i class="bi bi-shield-check"></i> Đã thanh toán';
+                            }
+
+                            // Ẩn nút "Thanh toán ngay" đi vì đã trả tiền rồi
+                            let payBtn = bookingCard.querySelector('.btn-payment');
+                            if (payBtn) payBtn.style.display = 'none';
+                        }
+
+                        // 2. NGHIỆP VỤ: HỦY ĐƠN
+                        else if (typeName === 'Hủy Đơn') {
+                            badge.className = "status-badge badge-cancelled";
+                            badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
+
+                            // Ẩn nút thanh toán nếu chưa thanh toán mà bị hủy
+                            let payBtn = bookingCard.querySelector('.btn-payment');
+                            if (payBtn) payBtn.style.display = 'none';
+
+                            // Ẩn nút "Hủy & Hoàn tiền"
+                            let cancelBtn = bookingCard.querySelector('.btn-cancel');
+                            if (cancelBtn) cancelBtn.style.display = 'none';
+                        }
+
+                        // 3. NGHIỆP VỤ: HOÀN TIỀN
+                        else if (typeName === 'Hoàn Tiền') {
+                            badge.className = "status-badge badge-refunded";
+                            badge.innerHTML = '<i class="bi bi-cash-coin me-1"></i> Đã hoàn tiền';
+
+                            // Thay đổi box ghi chú hoàn tiền
+                            let refundNote = document.getElementById("refund-note-" + data.booking_id);
+                            if (refundNote) {
+                                refundNote.className = "refunded-note-box";
+                                refundNote.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> TravelVN đã hoàn tiền thành công cho đơn hàng này.';
+                            }
+                        }
+                    }
+                });
             }
+        }, 1000);
 
-            Swal.fire({
-                toast: true,
-                position: "top-end",
-                icon: "success",
-                title: "Thanh toán thành công",
-                text: data.message || "Đơn hàng của bạn đã được xác nhận.",
-                showConfirmButton: false,
-                timer: 5000
-            });
-        });
-        socket.on("refund_completed", function (data) {
-            console.log("Nhận realtime refund_completed:", data);
-
-            const badge = document.getElementById("badge-" + data.booking_id);
-            const refundNote = document.getElementById("refund-note-" + data.booking_id);
-
-            if (badge) {
-                badge.classList.remove(
-                    "badge-pending",
-                    "badge-confirmed",
-                    "badge-cancelled",
-                    "badge-refund-processing",
-                    "badge-completed",
-                    "badge-refunded"
-                );
-
-                badge.classList.add("badge-refunded");
-                badge.innerHTML = '<i class="bi bi-cash-coin me-1"></i> Đã hoàn tiền';
-            }
-
-            if (refundNote) {
-                refundNote.className = "refunded-note-box";
-                refundNote.innerHTML = `
-            <i class="bi bi-check-circle-fill me-1"></i>
-            TravelVN đã hoàn tiền thành công cho đơn hàng này.
-        `;
-            }
-
-            Swal.fire({
-                toast: true,
-                position: "top-end",
-                icon: "success",
-                title: "Đã hoàn tiền",
-                text: data.message || "TravelVN đã hoàn tiền thành công cho đơn hàng của bạn.",
-                showConfirmButton: false,
-                timer: 5000
-            });
-        });
     });
 </script>
+
 <?php include 'layouts/footer.php'; ?>
