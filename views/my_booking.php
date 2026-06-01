@@ -1078,41 +1078,45 @@
         filterAndSortBookings();
         // --- KẾT THÚC PHẦN FILTER ---
 
-        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME
-        setTimeout(() => {
+        // 🔥 LOGIC CẬP NHẬT GIAO DIỆN REAL-TIME (ÉP CHỜ SOCKET TỪ FOOTER)
+        let checkSocketInterval = setInterval(() => {
+            // Kiểm tra liên tục mỗi nửa giây xem footer.php đã tạo ra biến globalSocket chưa
             if (typeof window.globalSocket !== 'undefined') {
+                clearInterval(checkSocketInterval); // Có rồi thì dừng kiểm tra
 
                 window.globalSocket.on("system_notification", function (data) {
 
+                    // BẬT F12 (CONSOLE) LÊN ĐỂ KIỂM TRA DÒNG NÀY XEM CÓ BOOKING_ID KHÔNG
+                    console.log("👉 Dữ liệu Socket nhận được:", data);
+
                     if (data.booking_id) {
-                        // Tìm đúng cái nút "Chờ xác nhận" nền vàng thông qua ID
                         let badge = document.getElementById("badge-" + data.booking_id);
-                        if (!badge) return;
+
+                        // Nếu trang hiện tại không chứa đơn hàng này thì bỏ qua
+                        if (!badge) {
+                            console.log("❌ Không tìm thấy thẻ HTML có id: badge-" + data.booking_id);
+                            return;
+                        }
 
                         let typeName = data.type || '';
                         let bookingCard = badge.closest('.booking-card');
 
                         // ==========================================
-                        // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN THÀNH CÔNG
+                        // KỊCH BẢN 1: DUYỆT ĐƠN / THANH TOÁN
                         // ==========================================
                         if (typeName === 'Thanh Toán' || typeName === 'Xác Nhận') {
-
-                            // 1. Đổi nút vàng "Chờ xác nhận" -> nút xanh "Đã xác nhận"
                             badge.className = "status-badge badge-confirmed";
                             badge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Đã xác nhận';
 
-                            // 2. Tìm dòng chữ cam "Chưa thanh toán" và đổi thành xanh "Đã thanh toán"
                             let payStatusDiv = bookingCard.querySelector('.pay-status');
                             if (payStatusDiv) {
                                 payStatusDiv.className = "pay-status pay-paid";
                                 payStatusDiv.innerHTML = '<i class="bi bi-shield-check me-1"></i> Đã thanh toán';
                             }
 
-                            // 3. Ẩn nút "Thanh toán ngay" ở bên dưới
                             let payBtn = bookingCard.querySelector('.btn-payment');
                             if (payBtn) payBtn.style.display = 'none';
 
-                            // 4. Ẩn nút "Hủy & Hoàn tiền" 
                             let cancelBtn = bookingCard.querySelector('.btn-cancel');
                             if (cancelBtn) cancelBtn.style.display = 'none';
                         }
@@ -1121,7 +1125,6 @@
                         // KỊCH BẢN 2: HỦY ĐƠN HÀNG
                         // ==========================================
                         else if (typeName === 'Hủy Đơn') {
-
                             badge.className = "status-badge badge-cancelled";
                             badge.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> Đã hủy';
 
@@ -1137,10 +1140,12 @@
                             let cancelBtn = bookingCard.querySelector('.btn-cancel');
                             if (cancelBtn) cancelBtn.style.display = 'none';
                         }
+                    } else {
+                        console.log("⚠️ BÁO ĐỘNG: Backend PHP chưa gửi booking_id qua Socket!");
                     }
                 });
             }
-        }, 1000);
+        }, 500);
 
     });
 </script>
