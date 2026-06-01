@@ -9,7 +9,10 @@ class TourController
     {
         $this->db = (new Database())->connect();
     }
-
+public function policy()
+{
+    require_once __DIR__ . '/../views/policy.php';
+}
     public function triggerCleanup()
     {
         $this->autoCancelExpiredBookings();
